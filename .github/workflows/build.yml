@@ -3,7 +3,8 @@ name: Build Okean Visuals
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   build:
@@ -19,10 +20,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Gradle
+      - name: Install Gradle 8.10.2
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
 
-      - name: Build
+      - name: Build mod
         run: gradle build --no-daemon
 
       - name: Upload JAR
@@ -30,3 +33,4 @@ jobs:
         with:
           name: OkeanVisuals-1.21.4
           path: build/libs/*.jar
+          if-no-files-found: error
