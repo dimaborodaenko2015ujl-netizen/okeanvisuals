@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.7.2'
+    id 'fabric-loom' version '1.8.11'
 }
 
 version = '1.0.0'
@@ -7,6 +7,7 @@ group = 'com.okean.visuals'
 
 repositories {
     mavenCentral()
+
     maven {
         name = 'Fabric'
         url = 'https://maven.fabricmc.net/'
