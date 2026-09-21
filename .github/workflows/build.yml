@@ -1,36 +1,26 @@
-name: Build Okean Visuals
+plugins {
+    id 'fabric-loom' version '1.7.2'
+}
 
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
+version = '1.0.0'
+group = 'com.okean.visuals'
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+repositories {
+    mavenCentral()
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+}
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+dependencies {
+    minecraft 'com.mojang:minecraft:1.21.4'
+    mappings 'net.fabricmc:yarn:1.21.4+build.1:v2'
+    modImplementation 'net.fabricmc:fabric-loader:0.15.11'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.110.0+1.21.4'
+}
 
-      - name: Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '21'
-
-      - name: Install Gradle 8.10.2
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-
-      - name: Build mod
-        run: gradle build --no-daemon
-
-      - name: Upload JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: OkeanVisuals-1.21.4
-          path: build/libs/*.jar
-          if-no-files-found: error
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
