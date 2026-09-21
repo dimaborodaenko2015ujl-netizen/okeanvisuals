@@ -7,13 +7,17 @@ group = 'com.okean.visuals'
 
 repositories {
     mavenCentral()
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
 }
 
 dependencies {
     minecraft 'com.mojang:minecraft:1.21.4'
     mappings 'net.fabricmc:yarn:1.21.4+build.1:v2'
     modImplementation 'net.fabricmc:fabric-loader:0.15.11'
-    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.96.0+1.21.4'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.110.0+1.21.4'
 }
 
 java {
