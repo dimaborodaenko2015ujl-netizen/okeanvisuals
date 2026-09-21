@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "okeanvisuals",
+  "version": "1.0.0",
+  "name": "Okean Visuals",
+  "description": "Okean Visuals",
+  "authors": ["Okean"],
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.okean.visuals.OkeanVisuals"]
+  },
+  "depends": {
+    "fabricloader": ">=0.15.11",
+    "minecraft": "1.21.4",
+    "fabric-api": "*"
+  }
+}
