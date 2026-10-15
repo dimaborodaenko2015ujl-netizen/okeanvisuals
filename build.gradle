@@ -25,3 +25,24 @@ java {
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
 }
+
+tasks.register('verifyModJar') {
+    dependsOn tasks.named('remapJar')
+    doLast {
+        def jarFile = tasks.named('remapJar').get().archiveFile.get().asFile
+        def zip = new java.util.zip.ZipFile(jarFile)
+        try {
+            ['fabric.mod.json', 'com/okean/visuals/OkeanVisuals.class',
+             'com/okean/visuals/OkeanVisuals$OkeanMenu.class'].each { entry ->
+                if (zip.getEntry(entry) == null) {
+                    throw new GradleException("Missing mod entry: " + entry)
+                }
+            }
+        } finally {
+            zip.close()
+        }
+    }
+}
+tasks.named('build') {
+    dependsOn tasks.named('verifyModJar')
+}

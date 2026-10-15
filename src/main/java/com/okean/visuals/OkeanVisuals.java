@@ -27,7 +27,8 @@ public class OkeanVisuals implements ClientModInitializer {
     public static boolean aimbot = false;
 
     private boolean zoomEnabled = false;
-    private float previousFov = 70.0f;
+    private int previousFov = 70;
+    private boolean menuRequested = false;
 
     @Override
     public void onInitializeClient() {
@@ -69,6 +70,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 return;
             }
 
+            if (menuRequested) {
+                menuRequested = false;
+                client.setScreen(new OkeanMenu());
+            }
+
             // Автоспринт
             if (autoSprint
                     && client.player.forwardSpeed > 0
@@ -96,7 +102,7 @@ public class OkeanVisuals implements ClientModInitializer {
                 }
 
                 client.options.getFov().setValue(
-                        Math.max(10.0, previousFov * 0.35)
+                        MathHelper.clamp((int) Math.round(previousFov * 0.35), 30, 110)
                 );
 
             } else if (zoomEnabled) {
@@ -126,16 +132,17 @@ public class OkeanVisuals implements ClientModInitializer {
 
         dispatcher.register(
                 ClientCommandManager.literal("okean")
+                        .executes(context -> {
+                            menuRequested = true;
+                            return 1;
+                        })
 
                         // /okean menu
                         .then(
                                 ClientCommandManager.literal("menu")
                                         .executes(context -> {
 
-                                            MinecraftClient client =
-                                                    MinecraftClient.getInstance();
-
-                                            client.setScreen(new OkeanMenu());
+                                            menuRequested = true;
 
                                             return 1;
                                         })
