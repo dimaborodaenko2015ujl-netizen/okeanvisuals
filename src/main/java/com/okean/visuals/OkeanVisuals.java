@@ -238,7 +238,7 @@ public class OkeanVisuals implements ClientModInitializer {
                                         .executes(context -> {
 
                                             autoSprint = !autoSprint;
-
+                                            OkeanMenu.saveSettings();
                                             return 1;
                                         })
                         )
@@ -249,7 +249,7 @@ public class OkeanVisuals implements ClientModInitializer {
                                         .executes(context -> {
 
                                             hudEnabled = !hudEnabled;
-
+                                            OkeanMenu.saveSettings();
                                             return 1;
                                         })
                         )
@@ -260,7 +260,7 @@ public class OkeanVisuals implements ClientModInitializer {
                                         .executes(context -> {
 
                                             fullbright = !fullbright;
-
+                                            OkeanMenu.saveSettings();
                                             return 1;
                                         })
                         )
