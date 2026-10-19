@@ -32,6 +32,7 @@ public abstract class OkeanHeldItemMixin {
     private void okean$firstPersonMotion(AbstractClientPlayerEntity player, float tickDelta,
             float pitch, Hand hand, float swingProgress, ItemStack stack, float equipProgress,
             MatrixStack matrices, VertexConsumerProvider providers, int light, CallbackInfo ci) {
+        matrices.push();
         if (stack.isEmpty()) return;
         float seconds = System.currentTimeMillis() / 1000.0f;
         float x = OkeanVisuals.itemX;
@@ -47,6 +48,14 @@ public abstract class OkeanHeldItemMixin {
         }
         matrices.translate(x, y, z);
         matrices.scale(OkeanVisuals.itemScale, OkeanVisuals.itemScale, OkeanVisuals.itemScale);
+    }
+
+    // Each hand must restore the caller's matrix, or the second hand accumulates offsets.
+    @Inject(method = "renderFirstPersonItem", at = @At("RETURN"))
+    private void okean$restoreFirstPersonMatrix(AbstractClientPlayerEntity player, float tickDelta,
+            float pitch, Hand hand, float swingProgress, ItemStack stack, float equipProgress,
+            MatrixStack matrices, VertexConsumerProvider providers, int light, CallbackInfo ci) {
+        matrices.pop();
     }
 
     // Full-bright lighting is the only Free item effect; no global world shaders.
