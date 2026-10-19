@@ -349,6 +349,15 @@ public class OkeanVisuals implements ClientModInitializer {
             return (alpha << 24) | rgb;
         }
 
+        /** Named theme selector used by Plus Mini appearance presets. */
+        public static void selectMiniTheme(String name) {
+            try {
+                theme = Theme.valueOf(name);
+            } catch (IllegalArgumentException ignored) {
+                theme = Theme.OCEAN_BLUE;
+            }
+        }
+
         private static String themeName() {
             return switch (theme) {
                 case OCEAN_BLUE -> "Ocean Blue";
@@ -418,6 +427,10 @@ public class OkeanVisuals implements ClientModInitializer {
                 OkeanPlusMini.colorfulWasd = Boolean.parseBoolean(props.getProperty("miniWasd", "false"));
                 OkeanPlusMini.animatedUi = Boolean.parseBoolean(props.getProperty("miniAnimatedUi", "true"));
                 OkeanPlusMini.hudColor = parseInt(props, "miniHudColor", 0, 10);
+                OkeanPlusMini.hatColor = parseInt(props, "miniHatColor", 0, 5);
+                OkeanPlusMini.hudStyle = parseInt(props, "miniHudStyle", 0, 2);
+                OkeanPlusMini.rainbowHud = Boolean.parseBoolean(props.getProperty("miniRgbHud", "false"));
+                OkeanPlusMini.animatedHud = Boolean.parseBoolean(props.getProperty("miniAnimatedHud", "true"));
             } catch (IOException e) {
                 System.err.println("Okean Visuals: could not load settings: " + e.getMessage());
             }
@@ -461,6 +474,10 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("miniWasd", Boolean.toString(OkeanPlusMini.colorfulWasd));
             props.setProperty("miniAnimatedUi", Boolean.toString(OkeanPlusMini.animatedUi));
             props.setProperty("miniHudColor", Integer.toString(OkeanPlusMini.hudColor));
+            props.setProperty("miniHatColor", Integer.toString(OkeanPlusMini.hatColor));
+            props.setProperty("miniHudStyle", Integer.toString(OkeanPlusMini.hudStyle));
+            props.setProperty("miniRgbHud", Boolean.toString(OkeanPlusMini.rainbowHud));
+            props.setProperty("miniAnimatedHud", Boolean.toString(OkeanPlusMini.animatedHud));
             try {
                 Files.createDirectories(CONFIG_PATH.getParent());
                 try (OutputStream out = Files.newOutputStream(CONFIG_PATH)) {
@@ -629,8 +646,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Версия: 1.5.0 Plus Mini Test",
                         "Version: 1.5.0 Plus Mini Test", "Версія: 1.5.0 Plus Mini Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Plus Mini: шляпа, HUD, +5 тем",
-                        "Plus Mini: hat, HUD, +5 themes", "Plus Mini: капелюх, HUD, +5 тем"),
+                ctx.drawText(textRenderer, tr("Plus Mini: RGB, шляпа, пресеты",
+                        "Plus Mini: RGB, hat, presets", "Plus Mini: RGB, капелюх, пресети"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
