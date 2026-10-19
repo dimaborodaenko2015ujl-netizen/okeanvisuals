@@ -1,6 +1,7 @@
 package com.okean.visuals.mixin;
 
 import com.okean.visuals.OkeanHud;
+import net.minecraft.client.world.ClientWorld;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -11,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * Does not alter server time, game rules or entity/server ticks.
  * Minecraft time: 06:00=0 ticks, 12:00=6000, 18:00=12000, 24:00=18000.
  */
-@Mixin(targets = "net.minecraft.client.world.ClientWorld$Properties")
+@Mixin(ClientWorld.Properties.class)
 public abstract class OkeanVisualTimeMixin {
     @Inject(method = "getTimeOfDay", at = @At("RETURN"), cancellable = true)
     private void okean$visualTime(CallbackInfoReturnable<Long> cir) {
