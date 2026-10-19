@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 // This adjusts sky color; it isn't a shader/resource-pack replacement.
 @Mixin(ClientWorld.class)
 public abstract class OkeanSkyMixin {
-    @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true)
+    @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true, require = 0)
     private void okean$skyTint(Vec3d cameraPos, float tickDelta, CallbackInfoReturnable<Vec3d> cir) {
         if (OkeanHud.skyStyle == 0) return;
         Vec3d vanilla = cir.getReturnValue();
