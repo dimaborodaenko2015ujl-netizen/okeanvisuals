@@ -54,7 +54,7 @@ public class OkeanVisuals implements ClientModInitializer {
     public static float itemX = 0.0f, itemY = 0.0f, itemZ = 0.0f;
     public static float itemScale = 1.0f;
     public static int handAnimation = 0; // 0=normal, 1=float, 2=sway
-    public static int itemEffect = 0; // 0=normal, 1=glow, 2=pulse
+    public static int itemEffect = 0; // Free: 0=normal, 1=glow
 
 
     @Override
@@ -380,7 +380,7 @@ public class OkeanVisuals implements ClientModInitializer {
                 itemZ = parseFloat(props, "itemZ", 0.0f, -1.0f, 1.0f);
                 itemScale = parseFloat(props, "itemScale", 1.0f, 0.5f, 2.0f);
                 handAnimation = parseInt(props, "handAnimation", 0, 2);
-                itemEffect = parseInt(props, "itemEffect", 0, 2);
+                itemEffect = parseInt(props, "itemEffect", 0, 1);
                 OkeanHud.x = parseInt(props, "hudX", 10, 20000);
                 OkeanHud.y = parseInt(props, "hudY", 10, 20000);
                 OkeanHud.scale = parseFloat(props, "hudScale", 1.0f, 0.75f, 1.75f);
@@ -447,18 +447,13 @@ public class OkeanVisuals implements ClientModInitializer {
 
         private void addAction(String label, int x, int y, int w, int h,
                                ButtonWidget.PressAction action) {
-            addDrawableChild(
-                    ButtonWidget.builder(Text.literal(label), action)
-                            .dimensions(x, y, w, h)
-                            .build()
-            );
+            addDrawableChild(OkeanButton.of(label, x, y, w, h, action));
         }
 
         private void addPlanned(String label, int x, int y, int w, int h) {
-            ButtonWidget button = ButtonWidget.builder(
-                    Text.literal(label + "  [" + tr("скоро", "soon", "скоро") + "]"),
-                    ignored -> {}
-            ).dimensions(x, y, w, h).build();
+            OkeanButton button = OkeanButton.of(
+                    label + "  [" + tr("скоро", "soon", "скоро") + "]",
+                    x, y, w, h, ignored -> {});
             button.active = false;
             addDrawableChild(button);
         }
@@ -592,11 +587,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.2 Free Test",
-                        "Version: 1.4.2 Free Test", "Версія: 1.4.2 Free Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.3 Free Test",
+                        "Version: 1.4.3 Free Test", "Версія: 1.4.3 Free Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Новости: HUD, 5 цветов и новое небо",
-                        "News: HUD, 5 themes, new sky", "Новини: HUD, 5 кольорів і нове небо"),
+                ctx.drawText(textRenderer, tr("Новости: новые кнопки и эффекты Free",
+                        "News: themed UI, Free item effect", "Новини: нові кнопки й ефект Free"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
@@ -631,11 +626,11 @@ public class OkeanVisuals implements ClientModInitializer {
         }
 
         private void button(String label, int bx, int by, int bw, Runnable action) {
-            addDrawableChild(ButtonWidget.builder(Text.literal(label), b -> {
+            addDrawableChild(OkeanButton.of(label, bx, by, bw, 20, b -> {
                 action.run();
                 OkeanMenu.saveSettings();
                 clearAndInit();
-            }).dimensions(bx, by, bw, 20).build());
+            }));
         }
 
         private void step(int row, String label, Runnable minus, Runnable plus) {
@@ -660,16 +655,15 @@ public class OkeanVisuals implements ClientModInitializer {
                     () -> itemScale = clamp(itemScale + 0.05f, 0.5f, 2.0f));
             step(4, "Animation", () -> handAnimation = (handAnimation + 2) % 3,
                     () -> handAnimation = (handAnimation + 1) % 3);
-            step(5, "Item effect", () -> itemEffect = (itemEffect + 2) % 3,
-                    () -> itemEffect = (itemEffect + 1) % 3);
+            step(5, "Free Glow", () -> itemEffect = 1 - itemEffect,
+                    () -> itemEffect = 1 - itemEffect);
             button(OkeanMenu.tr("Сбросить", "Reset", "Скинути"),
                     x + 20, y + h - 33, 104, () -> {
                         itemX = 0; itemY = 0; itemZ = 0;
                         itemScale = 1; handAnimation = 0; itemEffect = 0;
                     });
-            addDrawableChild(ButtonWidget.builder(Text.literal(
-                    OkeanMenu.tr("Готово", "Done", "Готово")), b -> close())
-                    .dimensions(x + w - 128, y + h - 33, 104, 20).build());
+            addDrawableChild(OkeanButton.of(OkeanMenu.tr("Готово", "Done", "Готово"),
+                    x + w - 128, y + h - 33, 104, 20, b -> close()));
         }
 
         private static float clamp(float value, float min, float max) {
@@ -697,8 +691,7 @@ public class OkeanVisuals implements ClientModInitializer {
                 String.format(java.util.Locale.ROOT, "Size: %.2f", itemScale),
                 "Motion: " + switch (handAnimation) {
                     case 1 -> "Float"; case 2 -> "Sway"; default -> "Normal"; },
-                "Effect: " + switch (itemEffect) {
-                    case 1 -> "Glow"; case 2 -> "Pulse"; default -> "Normal"; }
+                "Free effect: " + (itemEffect == 1 ? "Glow" : "Normal")
             };
             for (int i = 0; i < rows.length; i++) {
                 ctx.drawText(textRenderer, rows[i], x + 16, y + 45 + i * 27,
