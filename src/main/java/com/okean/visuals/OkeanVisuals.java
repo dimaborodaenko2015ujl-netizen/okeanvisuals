@@ -384,6 +384,10 @@ public class OkeanVisuals implements ClientModInitializer {
                 OkeanHud.scale = parseFloat(props, "hudScale", 1.0f, 0.75f, 1.75f);
                 OkeanHud.showWasd = Boolean.parseBoolean(props.getProperty("wasd", "true"));
                 OkeanHud.plusCrosshair = Boolean.parseBoolean(props.getProperty("crosshair", "false"));
+                OkeanHud.visualTimeEnabled = Boolean.parseBoolean(
+                        props.getProperty("visualTimeEnabled", "false"));
+                OkeanHud.visualTimeHour = MathHelper.clamp(
+                        parseInt(props, "visualTimeHour", 12, 24), 1, 24);
                 hudEnabled = Boolean.parseBoolean(props.getProperty("hudEnabled", "true"));
                 showRings = Boolean.parseBoolean(props.getProperty("showRings", "true"));
                 autoSprint = Boolean.parseBoolean(props.getProperty("autoSprint", "false"));
@@ -418,6 +422,8 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("hudScale", Float.toString(OkeanHud.scale));
             props.setProperty("wasd", Boolean.toString(OkeanHud.showWasd));
             props.setProperty("crosshair", Boolean.toString(OkeanHud.plusCrosshair));
+            props.setProperty("visualTimeEnabled", Boolean.toString(OkeanHud.visualTimeEnabled));
+            props.setProperty("visualTimeHour", Integer.toString(OkeanHud.visualTimeHour));
             props.setProperty("hudEnabled", Boolean.toString(hudEnabled));
             props.setProperty("showRings", Boolean.toString(showRings));
             props.setProperty("autoSprint", Boolean.toString(autoSprint));
@@ -582,11 +588,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.4 Free RC",
-                        "Version: 1.4.4 Free RC", "Версія: 1.4.4 Free RC"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.5 Free RC",
+                        "Version: 1.4.5 Free RC", "Версія: 1.4.5 Free RC"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Free: HUD, темы и настройки рук",
-                        "Free: HUD, themes and hand controls", "Free: HUD, теми й налаштування рук"),
+                ctx.drawText(textRenderer, tr("Free: Visual Time (1-24), HUD, темы",
+                        "Free: Visual Time (1-24), HUD, themes", "Free: Visual Time (1-24), HUD, теми"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
