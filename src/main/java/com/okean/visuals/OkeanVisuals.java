@@ -7,6 +7,17 @@ import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallba
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.minecraft.client.gui.screen.option.ControlsOptionsScreen;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.passive.AnimalEntity;
+import net.minecraft.entity.effect.StatusEffectInstance;
+import net.minecraft.entity.effect.StatusEffects;
+import net.minecraft.util.Hand;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -36,7 +47,7 @@ public class OkeanVisuals implements ClientModInitializer {
     public static boolean fullbright = false;
     public static boolean killAura = false;
     private static AuraTarget targetMode = AuraTarget.MONSTERS;
-    private enum AuraTarget { MONSTERS, PLAYERS, BOTH }
+    private enum AuraTarget { MONSTERS, ANIMALS, PLAYERS, ALL }
 
     private boolean zoomEnabled = false;
     private int previousFov = 70;
@@ -44,6 +55,8 @@ public class OkeanVisuals implements ClientModInitializer {
     private boolean gammaOverridden = false;
     private double storedGamma = 0.5;
     private int auraTicksSinceAttack = 20;
+    private boolean appliedNightVision = false;
+    public static boolean showRings = true;
 
     @Override
     public void onInitializeClient() {
@@ -71,8 +84,15 @@ public class OkeanVisuals implements ClientModInitializer {
                 )
         );
 
-        // HUD
+        KeyBinding auraKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding("key.okeanvisuals.aura",
+                        InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_R, "category.okeanvisuals")
+        );
+
+        // HUD and world-space target indicators
         HudRenderCallback.EVENT.register(this::renderHUD);
+        WorldRenderEvents.AFTER_ENTITIES.register(this::renderTargetRings);
 
         // Команды
         ClientCommandRegistrationCallback.EVENT.register(
@@ -83,6 +103,7 @@ public class OkeanVisuals implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
             if (client.player == null || client.world == null) {
+                appliedNightVision = false;
                 restoreGamma(client);
                 if (zoomEnabled) {
                     client.options.getFov().setValue(previousFov);
@@ -90,6 +111,10 @@ public class OkeanVisuals implements ClientModInitializer {
                 }
                 auraTicksSinceAttack = 20;
                 return;
+            }
+
+            while (auraKey.wasPressed()) {
+                killAura = !killAura;
             }
 
             if (menuRequested) {
@@ -105,14 +130,19 @@ public class OkeanVisuals implements ClientModInitializer {
                 client.player.setSprinting(true);
             }
 
-            // Fullbright: restore the original gamma setting on disable.
-            if (fullbright && !gammaOverridden) {
-                storedGamma = client.options.getGamma().getValue();
-                client.options.getGamma().setValue(100.0);
-                gammaOverridden = true;
-            } else if (!fullbright) {
-                restoreGamma(client);
+            // Night Vision is actually visible with Minecraft 1.21.4's modern lightmap.
+            // Only remove the effect if this mod itself added it.
+            if (fullbright) {
+                if (!client.player.hasStatusEffect(StatusEffects.NIGHT_VISION)) {
+                    client.player.addStatusEffect(new StatusEffectInstance(
+                            StatusEffects.NIGHT_VISION, 300, 0, true, false, false));
+                    appliedNightVision = true;
+                }
+            } else if (appliedNightVision) {
+                client.player.removeStatusEffect(StatusEffects.NIGHT_VISION);
+                appliedNightVision = false;
             }
+            if (gammaOverridden) restoreGamma(client);
 
             // Открытие меню через Right Shift
             while (menuKey.wasPressed()) {
@@ -143,7 +173,7 @@ public class OkeanVisuals implements ClientModInitializer {
             if (killAura && client.currentScreen == null && client.interactionManager != null) {
                 LivingEntity target = findAuraTarget(client);
                 if (target != null) {
-                    turnHeadToward(client, target);
+                    turnBodyToward(client, target);
                     if (auraTicksSinceAttack >= 12
                             && client.player.getAttackCooldownProgress(0.0f) >= 0.95f) {
                         client.interactionManager.attackEntity(client.player, target);
@@ -355,7 +385,10 @@ public class OkeanVisuals implements ClientModInitializer {
             boolean eligible = switch (targetMode) {
                 case MONSTERS -> entity instanceof HostileEntity;
                 case PLAYERS -> entity instanceof PlayerEntity;
-                case BOTH -> entity instanceof HostileEntity || entity instanceof PlayerEntity;
+                case ANIMALS -> entity instanceof AnimalEntity;
+                case PLAYERS -> entity instanceof PlayerEntity;
+                case ALL -> entity instanceof HostileEntity || entity instanceof AnimalEntity
+                        || entity instanceof PlayerEntity;
             };
             if (!eligible || !client.player.canSee(entity)) {
                 continue;
@@ -369,11 +402,50 @@ public class OkeanVisuals implements ClientModInitializer {
         return nearest;
     }
 
-    private void turnHeadToward(MinecraftClient client, LivingEntity target) {
+    private void turnBodyToward(MinecraftClient client, LivingEntity target) {
         Vec3d diff = target.getEyePos().subtract(client.player.getEyePos());
         float desiredYaw = (float) Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0f;
-        // Deliberately don't call setYaw or setPitch: keep player's camera free.
+        // Third-person model orientation only. Never call setYaw/setPitch (camera).
+        client.player.setBodyYaw(desiredYaw);
         client.player.setHeadYaw(desiredYaw);
+    }
+
+    private void renderTargetRings(WorldRenderContext context) {
+        if (!showRings || context.consumers() == null || context.matrixStack() == null) return;
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.player == null || client.world == null) return;
+        MatrixStack matrices = context.matrixStack();
+        Vec3d camera = context.camera().getPos();
+        VertexConsumer lines = context.consumers().getBuffer(RenderLayer.getLines());
+        for (LivingEntity entity : client.world.getEntitiesByClass(
+                LivingEntity.class, client.player.getBoundingBox().expand(16.0),
+                e -> e != client.player && e.isAlive()
+                        && (e instanceof AnimalEntity || e instanceof PlayerEntity))) {
+            double distanceSq = client.player.squaredDistanceTo(entity);
+            if (distanceSq > 16.0 * 16.0) continue;
+            boolean inReach = distanceSq <= 9.0 && client.player.canSee(entity);
+            boolean ready = client.player.getAttackCooldownProgress(0.0f) >= 0.95f;
+            // Green means the attack is in reach and ready; red means not yet.
+            int cr = inReach && ready ? 60 : 255;
+            int cg = inReach && ready ? 235 : 70;
+            int cb = 75;
+            matrices.push();
+            matrices.translate(entity.getX() - camera.x, entity.getY() - camera.y + 0.05,
+                    entity.getZ() - camera.z);
+            float radius = Math.max(0.45f, entity.getWidth() * 0.7f);
+            final int segments = 32;
+            for (int i = 0; i < segments; i++) {
+                double a = Math.PI * 2.0 * i / segments;
+                double b = Math.PI * 2.0 * (i + 1) / segments;
+                lines.vertex(matrices.peek(), (float) (Math.cos(a) * radius), 0.0f,
+                                (float) (Math.sin(a) * radius))
+                        .color(cr, cg, cb, 240).normal(matrices.peek(), 0.0f, 1.0f, 0.0f);
+                lines.vertex(matrices.peek(), (float) (Math.cos(b) * radius), 0.0f,
+                                (float) (Math.sin(b) * radius))
+                        .color(cr, cg, cb, 240).normal(matrices.peek(), 0.0f, 1.0f, 0.0f);
+            }
+            matrices.pop();
+        }
     }
 
     // =========================
@@ -444,8 +516,9 @@ public class OkeanVisuals implements ClientModInitializer {
         private static String targetName() {
             return switch (targetMode) {
                 case MONSTERS -> tr("Монстры", "Monsters", "Монстри");
+                case ANIMALS -> tr("Животные", "Animals", "Тварини");
                 case PLAYERS -> tr("Игроки", "Players", "Гравці");
-                case BOTH -> tr("Оба", "Both", "Обидва");
+                case ALL -> tr("Все", "All", "Усі");
             };
         }
 
@@ -528,7 +601,7 @@ public class OkeanVisuals implements ClientModInitializer {
         @Override
         protected void init() {
             pw = Math.min(440, Math.max(220, width - 24));
-            ph = Math.min(275, Math.max(185, height - 24));
+            ph = Math.min(315, Math.max(215, height - 24));
             px = (width - pw) / 2;
             py = (height - ph) / 2;
 
@@ -548,7 +621,7 @@ public class OkeanVisuals implements ClientModInitializer {
             int rowX = px + 35;
             int rowW = pw - 70;
             int rowY = tabY + 37;
-            int rowGap = 28;
+            int rowGap = 26;
 
             if (tab == Tab.MISC) {
                 Arm selectedArm = clientArm();
@@ -585,6 +658,12 @@ public class OkeanVisuals implements ClientModInitializer {
                             autoSprint = !autoSprint;
                             clearAndInit();
                         });
+                addAction(tr("Круги целей: ", "Target rings: ", "Кола цілей: ")
+                                + (showRings ? "ON" : "OFF"),
+                        rowX, rowY + 5 * rowGap, rowW, 22, b -> {
+                            showRings = !showRings;
+                            clearAndInit();
+                        });
             } else if (tab == Tab.SETTINGS) {
                 addAction(tr("Язык: ", "Language: ", "Мова: ") + languageName(),
                         rowX, rowY, rowW, 22, b -> {
@@ -606,6 +685,12 @@ public class OkeanVisuals implements ClientModInitializer {
                             opacityIndex = (opacityIndex + 1) % 3;
                             saveSettings();
                             clearAndInit();
+                        });
+                addAction(tr("Горячие клавиши (R — Aura)", "Keybinds (R — Aura)",
+                                "Гарячі клавіші (R — Aura)"),
+                        rowX, rowY + 3 * rowGap, rowW, 22, b -> {
+                            MinecraftClient client = MinecraftClient.getInstance();
+                            client.setScreen(new ControlsOptionsScreen(this, client.options));
                         });
             }
 
