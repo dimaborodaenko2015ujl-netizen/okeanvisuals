@@ -56,7 +56,10 @@ public final class OkeanPlusMini {
         int accent = hudAccent();
         int alpha = OPACITIES[MathHelper.clamp(hudTransparency, 0, 3)];
         int rgb1 = 0x0C1325;
-        int rgb2 = gradientHud ? ((accent & 0xFFFFFF) >>> 2) & 0x3F3F3F : rgb1;
+        int red = 12 + (((accent >>> 16) & 0xFF) / 7);
+        int green = 19 + (((accent >>> 8) & 0xFF) / 7);
+        int blue = 37 + ((accent & 0xFF) / 7);
+        int rgb2 = gradientHud ? (red << 16) | (green << 8) | blue : rgb1;
         int top = withAlpha(rgb1, alpha);
         int bottom = withAlpha(rgb2, alpha);
         if (!roundedHud) {
