@@ -79,7 +79,7 @@ public final class OkeanHud {
         int accent = OkeanVisuals.OkeanMenu.accent();
         ctx.fill(0, 0, PANEL_WIDTH, h, 0xB40C1222);
         ctx.drawBorder(0, 0, PANEL_WIDTH, h, accent);
-        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.1", 9, 9, accent, true);
+        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.3", 9, 9, accent, true);
 
         int line = 27;
         String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
@@ -131,13 +131,14 @@ public final class OkeanHud {
         }
 
         private void option(String text, int yOffset, Runnable action) {
-            addDrawableChild(ButtonWidget.builder(Text.literal(text), b -> {
+            addDrawableChild(OkeanButton.of(text, left + 25, top + yOffset,
+                    panelW - 50, 22, b -> {
                 action.run();
                 OkeanVisuals.OkeanMenu.saveSettings();
                 if (MinecraftClient.getInstance().currentScreen == this) {
                     clearAndInit();
                 }
-            }).dimensions(left + 25, top + yOffset, panelW - 50, 22).build());
+            }));
         }
 
         @Override
@@ -162,8 +163,8 @@ public final class OkeanHud {
             option("Reset HUD position / size", row + 162, () -> {
                 x = 10; y = 10; scale = 1.0f;
             });
-            addDrawableChild(ButtonWidget.builder(Text.literal("Done"), b -> close())
-                    .dimensions(left + (panelW - 115) / 2, top + panelH - 29, 115, 22).build());
+            addDrawableChild(OkeanButton.of("Done", left + (panelW - 115) / 2,
+                    top + panelH - 29, 115, 22, b -> close()));
         }
 
         @Override
@@ -198,8 +199,8 @@ public final class OkeanHud {
 
         @Override
         protected void init() {
-            addDrawableChild(ButtonWidget.builder(Text.literal("Save position"), b -> close())
-                    .dimensions(width / 2 - 60, height - 31, 120, 22).build());
+            addDrawableChild(OkeanButton.of("Save position", width / 2 - 60,
+                    height - 31, 120, 22, b -> close()));
         }
 
         @Override
