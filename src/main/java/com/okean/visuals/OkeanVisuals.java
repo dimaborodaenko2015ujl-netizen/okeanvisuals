@@ -592,8 +592,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.1 Free Test",
-                        "Version: 1.4.1 Free Test", "Версія: 1.4.1 Free Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.2 Free Test",
+                        "Version: 1.4.2 Free Test", "Версія: 1.4.2 Free Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
                 ctx.drawText(textRenderer, tr("Новости: HUD, 5 цветов и новое небо",
                         "News: HUD, 5 themes, new sky", "Новини: HUD, 5 кольорів і нове небо"),
