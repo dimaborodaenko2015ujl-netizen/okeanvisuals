@@ -390,7 +390,6 @@ public class OkeanVisuals implements ClientModInitializer {
 
             boolean eligible = switch (targetMode) {
                 case MONSTERS -> entity instanceof HostileEntity;
-                case PLAYERS -> entity instanceof PlayerEntity;
                 case ANIMALS -> entity instanceof AnimalEntity;
                 case PLAYERS -> entity instanceof PlayerEntity;
                 case ALL -> entity instanceof HostileEntity || entity instanceof AnimalEntity
