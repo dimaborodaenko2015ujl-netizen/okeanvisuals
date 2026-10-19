@@ -272,7 +272,7 @@ public final class OkeanHud {
         }
 
         @Override
-        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        public void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
             int accent = OkeanVisuals.OkeanMenu.accent();
             int bx = getX(), by = getY(), bw = getWidth(), bh = getHeight();
             ctx.fill(bx, by, bx + bw, by + bh, 0xE5122132);
