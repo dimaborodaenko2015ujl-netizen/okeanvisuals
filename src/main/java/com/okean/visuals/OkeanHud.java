@@ -79,10 +79,9 @@ public final class OkeanHud {
         ctx.getMatrices().scale(scale, scale, 1f);
 
         int h = panelHeight();
-        int accent = OkeanVisuals.OkeanMenu.accent();
-        ctx.fill(0, 0, PANEL_WIDTH, h, 0xB40C1222);
-        ctx.drawBorder(0, 0, PANEL_WIDTH, h, accent);
-        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.5", 9, 9, accent, true);
+        int accent = OkeanPlusMini.hudAccent();
+        OkeanPlusMini.drawHudBackground(ctx, PANEL_WIDTH, h);
+        ctx.drawText(client.textRenderer, "OKEAN PLUS MINI 1.5", 9, 9, accent, true);
 
         int line = 27;
         String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
@@ -118,8 +117,18 @@ public final class OkeanHud {
 
     private static void drawKey(DrawContext ctx, MinecraftClient client, int bx, int by,
                                 String label, boolean down) {
-        ctx.fill(bx, by, bx + 19, by + 18, down ? 0xCF2D805B : 0xB435435A);
-        ctx.drawBorder(bx, by, 19, 18, down ? 0xFF55EF7A : 0xFF839AB5);
+        int keyColor = switch (label) {
+            case "W" -> 0xFF52F0BB;
+            case "A" -> 0xFF6BBEFF;
+            case "S" -> 0xFFFF79B6;
+            default -> 0xFFFFCC72;
+        };
+        boolean colored = OkeanPlusMini.colorfulWasd;
+        int dark = colored ? (0xD0000000 | ((keyColor & 0x00FFFFFF) >>> 2)) : 0xB435435A;
+        int bg = down ? (colored ? (0xE0000000 | (keyColor & 0x00FFFFFF)) : 0xCF2D805B) : dark;
+        int edge = colored ? keyColor : (down ? 0xFF55EF7A : 0xFF839AB5);
+        ctx.fill(bx, by, bx + 19, by + 18, bg);
+        ctx.drawBorder(bx, by, 19, 18, edge);
         ctx.drawText(client.textRenderer, label, bx + 6, by + 5,
                 down ? 0xFFFFFFFF : 0xFFD6DFE7, true);
     }
