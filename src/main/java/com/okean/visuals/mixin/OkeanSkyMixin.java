@@ -24,10 +24,10 @@ public abstract class OkeanSkyMixin {
         int g = (vanilla >>> 8) & 0xFF;
         int b = vanilla & 0xFF;
 
-        // A gentle blue tint; preserve existing transparency/alpha.
-        int red = Math.min(255, (int) Math.round(r * 0.72 + 8));
-        int green = Math.min(255, (int) Math.round(g * 0.94 + 6));
-        int blue = Math.min(255, (int) Math.round(b * 1.12 + 8));
+        // A clearly visible ocean-blue tint; preserve existing transparency/alpha.
+        int red = Math.min(255, (int) Math.round(r * 0.53));
+        int green = Math.min(255, (int) Math.round(g * 0.86 + 3));
+        int blue = Math.min(255, (int) Math.round(b * 1.12 + 32));
 
         cir.setReturnValue((vanilla & 0xFF000000) | (red << 16) | (green << 8) | blue);
     }
