@@ -2,7 +2,7 @@ plugins {
     id 'fabric-loom' version '1.8.11'
 }
 
-version = '1.4.5-free-rc1'
+version = '1.5.0-plus-mini-test'
 group = 'com.okean.visuals'
 
 repositories {
@@ -36,6 +36,9 @@ tasks.register('verifyModJar') {
              'com/okean/visuals/OkeanVisuals$OkeanMenu.class',
              'com/okean/visuals/OkeanHud.class',
              'com/okean/visuals/OkeanButton.class',
+             'com/okean/visuals/OkeanPlusMini.class',
+             'com/okean/visuals/OkeanPlusMini$SettingsScreen.class',
+             'com/okean/visuals/OkeanChineseHat.class',
              'com/okean/visuals/OkeanHud$VisualSettingsScreen.class',
              'com/okean/visuals/OkeanHud$VisualTimeScreen.class',
              'com/okean/visuals/OkeanHud$VisualTimeSlider.class',
