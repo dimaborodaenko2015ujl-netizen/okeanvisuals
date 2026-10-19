@@ -14,6 +14,16 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.mob.HostileEntity;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.Arm;
+import net.fabricmc.loader.api.FabricLoader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.IOException;
+import java.util.Properties;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -24,16 +34,22 @@ public class OkeanVisuals implements ClientModInitializer {
     public static boolean hudEnabled = true;
     public static boolean autoSprint = false;
     public static boolean fullbright = false;
-    public static boolean aimbot = false;
+    public static boolean killAura = false;
+    private static AuraTarget targetMode = AuraTarget.MONSTERS;
+    private enum AuraTarget { MONSTERS, PLAYERS, BOTH }
 
     private boolean zoomEnabled = false;
     private int previousFov = 70;
     private boolean menuRequested = false;
+    private boolean gammaOverridden = false;
+    private double storedGamma = 0.5;
+    private int auraTicksSinceAttack = 20;
 
     @Override
     public void onInitializeClient() {
 
         System.out.println("🌊 Okean Visuals loaded!");
+        OkeanMenu.loadSettings();
 
         // Клавиша меню — Right Shift
         KeyBinding menuKey = KeyBindingHelper.registerKeyBinding(
@@ -67,6 +83,12 @@ public class OkeanVisuals implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
 
             if (client.player == null || client.world == null) {
+                restoreGamma(client);
+                if (zoomEnabled) {
+                    client.options.getFov().setValue(previousFov);
+                    zoomEnabled = false;
+                }
+                auraTicksSinceAttack = 20;
                 return;
             }
 
@@ -83,10 +105,14 @@ public class OkeanVisuals implements ClientModInitializer {
                 client.player.setSprinting(true);
             }
 
-            // Fullbright
-            client.options.getGamma().setValue(
-                    fullbright ? 100.0 : 0.5
-            );
+            // Fullbright: restore the original gamma setting on disable.
+            if (fullbright && !gammaOverridden) {
+                storedGamma = client.options.getGamma().getValue();
+                client.options.getGamma().setValue(100.0);
+                gammaOverridden = true;
+            } else if (!fullbright) {
+                restoreGamma(client);
+            }
 
             // Открытие меню через Right Shift
             while (menuKey.wasPressed()) {
@@ -94,7 +120,7 @@ public class OkeanVisuals implements ClientModInitializer {
             }
 
             // Zoom
-            if (zoomKey.isPressed()) {
+            if (zoomKey.isPressed() && client.currentScreen == null) {
 
                 if (!zoomEnabled) {
                     previousFov = client.options.getFov().getValue();
@@ -111,16 +137,29 @@ public class OkeanVisuals implements ClientModInitializer {
                 zoomEnabled = false;
             }
 
-            // Aimbot
-            if (aimbot) {
-
-                LivingEntity target = findTarget(client);
-
+            // Kill Aura: target mobs/players in reach without moving the camera.
+            // Default mode is hostile mobs only. Respect normal attack cooldown.
+            auraTicksSinceAttack++;
+            if (killAura && client.currentScreen == null && client.interactionManager != null) {
+                LivingEntity target = findAuraTarget(client);
                 if (target != null) {
-                    aimAt(client, target);
+                    turnHeadToward(client, target);
+                    if (auraTicksSinceAttack >= 12
+                            && client.player.getAttackCooldownProgress(0.0f) >= 0.95f) {
+                        client.interactionManager.attackEntity(client.player, target);
+                        client.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
+                        auraTicksSinceAttack = 0;
+                    }
                 }
             }
         });
+    }
+
+    private void restoreGamma(MinecraftClient client) {
+        if (gammaOverridden) {
+            client.options.getGamma().setValue(storedGamma);
+            gammaOverridden = false;
+        }
     }
 
     // =========================
@@ -181,13 +220,11 @@ public class OkeanVisuals implements ClientModInitializer {
                                         })
                         )
 
-                        // /okean aimbot
+                        // /okean aura
                         .then(
-                                ClientCommandManager.literal("aimbot")
+                                ClientCommandManager.literal("aura")
                                         .executes(context -> {
-
-                                            aimbot = !aimbot;
-
+                                            killAura = !killAura;
                                             return 1;
                                         })
                         )
@@ -291,79 +328,52 @@ public class OkeanVisuals implements ClientModInitializer {
 
         ty += 12;
 
-        // Aimbot
+        // Kill Aura
         ctx.drawText(
                 client.textRenderer,
-                "Aimbot: " + (aimbot ? "ON" : "OFF"),
+                "Kill Aura: " + (killAura ? "ON" : "OFF"),
                 tx,
                 ty,
-                aimbot ? 0xFF44FF44 : 0xFFFF4444,
+                killAura ? 0xFF44FF44 : 0xFFFF4444,
                 true
         );
     }
 
     // =========================
-    // AIMBOT
+    // KILL AURA
     // =========================
 
-    private LivingEntity findTarget(MinecraftClient client) {
+    private LivingEntity findAuraTarget(MinecraftClient client) {
+        LivingEntity nearest = null;
+        double nearestSquared = 3.0 * 3.0;
 
-        LivingEntity best = null;
-        double bestDist = 30.0;
+        for (LivingEntity entity : client.world.getEntitiesByClass(
+                LivingEntity.class,
+                client.player.getBoundingBox().expand(3.0),
+                e -> e != client.player && e.isAlive() && !e.isSpectator())) {
 
-        for (LivingEntity entity :
-                client.world.getEntitiesByClass(
-                        LivingEntity.class,
-                        client.player.getBoundingBox().expand(30),
-                        e -> e != client.player && e.isAlive()
-                )) {
-
-            double distance =
-                    client.player.distanceTo(entity);
-
-            if (distance < bestDist) {
-
-                bestDist = distance;
-                best = entity;
+            boolean eligible = switch (targetMode) {
+                case MONSTERS -> entity instanceof HostileEntity;
+                case PLAYERS -> entity instanceof PlayerEntity;
+                case BOTH -> entity instanceof HostileEntity || entity instanceof PlayerEntity;
+            };
+            if (!eligible || !client.player.canSee(entity)) {
+                continue;
+            }
+            double d = client.player.squaredDistanceTo(entity);
+            if (d < nearestSquared) {
+                nearestSquared = d;
+                nearest = entity;
             }
         }
-
-        return best;
+        return nearest;
     }
 
-    private void aimAt(
-            MinecraftClient client,
-            LivingEntity target) {
-
-        Vec3d diff =
-                target.getPos()
-                        .subtract(client.player.getEyePos());
-
-        float yaw =
-                (float) Math.toDegrees(
-                        Math.atan2(diff.z, diff.x)
-                ) - 90.0f;
-
-        float pitch =
-                (float) -Math.toDegrees(
-                        Math.atan2(
-                                diff.y,
-                                Math.sqrt(
-                                        diff.x * diff.x
-                                                + diff.z * diff.z
-                                )
-                        )
-                );
-
-        client.player.setYaw(yaw);
-
-        client.player.setPitch(
-                MathHelper.clamp(
-                        pitch,
-                        -90.0f,
-                        90.0f
-                )
-        );
+    private void turnHeadToward(MinecraftClient client, LivingEntity target) {
+        Vec3d diff = target.getEyePos().subtract(client.player.getEyePos());
+        float desiredYaw = (float) Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0f;
+        // Deliberately don't call setYaw or setPitch: keep player's camera free.
+        client.player.setHeadYaw(desiredYaw);
     }
 
     // =========================
@@ -427,12 +437,66 @@ public class OkeanVisuals implements ClientModInitializer {
             };
         }
 
+        private static Arm clientArm() {
+            return MinecraftClient.getInstance().options.getMainArm().getValue();
+        }
+
+        private static String targetName() {
+            return switch (targetMode) {
+                case MONSTERS -> tr("Монстры", "Monsters", "Монстри");
+                case PLAYERS -> tr("Игроки", "Players", "Гравці");
+                case BOTH -> tr("Оба", "Both", "Обидва");
+            };
+        }
+
         private static String languageName() {
             return switch (language) {
                 case RUSSIAN -> "Русский";
                 case ENGLISH -> "English";
                 case UKRAINIAN -> "Українська";
             };
+        }
+
+        // Keep UI preferences between Minecraft launches.
+        private static final Path CONFIG_PATH =
+                FabricLoader.getInstance().getConfigDir().resolve("okeanvisuals-ui.properties");
+
+        private static void loadSettings() {
+            if (!Files.exists(CONFIG_PATH)) return;
+            Properties props = new Properties();
+            try (InputStream in = Files.newInputStream(CONFIG_PATH)) {
+                props.load(in);
+                try { language = Language.valueOf(props.getProperty("language", "RUSSIAN")); }
+                catch (IllegalArgumentException ignored) { language = Language.RUSSIAN; }
+                try { theme = Theme.valueOf(props.getProperty("theme", "OCEAN_BLUE")); }
+                catch (IllegalArgumentException ignored) { theme = Theme.OCEAN_BLUE; }
+                try { targetMode = AuraTarget.valueOf(props.getProperty("targets", "MONSTERS")); }
+                catch (IllegalArgumentException ignored) { targetMode = AuraTarget.MONSTERS; }
+                try {
+                    opacityIndex = MathHelper.clamp(
+                            Integer.parseInt(props.getProperty("opacity", "0")), 0, 2);
+                } catch (NumberFormatException ignored) {
+                    opacityIndex = 0;
+                }
+            } catch (IOException e) {
+                System.err.println("Okean Visuals: could not load settings: " + e.getMessage());
+            }
+        }
+
+        private static void saveSettings() {
+            Properties props = new Properties();
+            props.setProperty("language", language.name());
+            props.setProperty("theme", theme.name());
+            props.setProperty("targets", targetMode.name());
+            props.setProperty("opacity", Integer.toString(opacityIndex));
+            try {
+                Files.createDirectories(CONFIG_PATH.getParent());
+                try (OutputStream out = Files.newOutputStream(CONFIG_PATH)) {
+                    props.store(out, "Okean Visuals UI settings");
+                }
+            } catch (IOException e) {
+                System.err.println("Okean Visuals: could not save settings: " + e.getMessage());
+            }
         }
 
         private static String transparencyName() {
@@ -487,16 +551,37 @@ public class OkeanVisuals implements ClientModInitializer {
             int rowGap = 28;
 
             if (tab == Tab.MISC) {
-                addPlanned(tr("Расположение рук", "Hand position", "Положення рук"),
-                        rowX, rowY, rowW, 22);
+                Arm selectedArm = clientArm();
+                addAction(tr("Рука: ", "Main hand: ", "Рука: ")
+                                + (selectedArm == Arm.RIGHT
+                                    ? tr("Правая", "Right", "Права")
+                                    : tr("Левая", "Left", "Ліва")),
+                        rowX, rowY, rowW, 22, b -> {
+                            MinecraftClient client = MinecraftClient.getInstance();
+                            client.options.getMainArm().setValue(
+                                    clientArm() == Arm.RIGHT ? Arm.LEFT : Arm.RIGHT);
+                            client.options.write();
+                            clearAndInit();
+                        });
                 addAction("Fullbright: " + (fullbright ? "ON" : "OFF"),
                         rowX, rowY + rowGap, rowW, 22, b -> {
                             fullbright = !fullbright;
                             clearAndInit();
                         });
-                addPlanned("Kill Aura", rowX, rowY + 2 * rowGap, rowW, 22);
-                addAction("AutoSprint: " + (autoSprint ? "ON" : "OFF"),
+                addAction("Kill Aura: " + (killAura ? "ON" : "OFF"),
+                        rowX, rowY + 2 * rowGap, rowW, 22, b -> {
+                            killAura = !killAura;
+                            clearAndInit();
+                        });
+                addAction(tr("Цели: ", "Targets: ", "Цілі: ") + targetName(),
                         rowX, rowY + 3 * rowGap, rowW, 22, b -> {
+                            targetMode = AuraTarget.values()[
+                                (targetMode.ordinal() + 1) % AuraTarget.values().length];
+                            saveSettings();
+                            clearAndInit();
+                        });
+                addAction("AutoSprint: " + (autoSprint ? "ON" : "OFF"),
+                        rowX, rowY + 4 * rowGap, rowW, 22, b -> {
                             autoSprint = !autoSprint;
                             clearAndInit();
                         });
@@ -505,18 +590,21 @@ public class OkeanVisuals implements ClientModInitializer {
                         rowX, rowY, rowW, 22, b -> {
                             language = Language.values()[(language.ordinal() + 1)
                                     % Language.values().length];
+                            saveSettings();
                             clearAndInit();
                         });
                 addAction(tr("Стиль: ", "Theme: ", "Стиль: ") + themeName(),
                         rowX, rowY + rowGap, rowW, 22, b -> {
                             theme = Theme.values()[(theme.ordinal() + 1)
                                     % Theme.values().length];
+                            saveSettings();
                             clearAndInit();
                         });
                 addAction(tr("Непрозрачность: ", "Opacity: ", "Непрозорість: ")
                                 + transparencyName(),
                         rowX, rowY + 2 * rowGap, rowW, 22, b -> {
                             opacityIndex = (opacityIndex + 1) % 3;
+                            saveSettings();
                             clearAndInit();
                         });
             }
@@ -553,17 +641,17 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.0.1 UI Test",
-                        "Version: 1.0.1 UI Test", "Версія: 1.0.1 UI Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.2.0 Test",
+                        "Version: 1.2.0 Test", "Версія: 1.2.0 Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Новости: новое меню с 3 разделами",
-                        "News: new menu with 3 sections", "Новини: нове меню з 3 розділами"),
+                ctx.drawText(textRenderer, tr("Новости: Kill Aura, руки и настройки",
+                        "News: Kill Aura, hands, settings", "Новини: Kill Aura, руки, налаштування"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
                         tx, ty + 68, 0xFFB8D6EB, true);
-                ctx.drawText(textRenderer, tr("Другие функции появятся позже",
-                        "More features coming later", "Інші функції з'являться пізніше"),
+                ctx.drawText(textRenderer, tr("Aura: только по желанию (OFF по умолчанию)",
+                        "Aura: opt-in (OFF by default)", "Aura: за бажанням (OFF спочатку)"),
                         tx, ty + 90, 0xFFB8D6EB, true);
             } else if (tab == Tab.SETTINGS) {
                 ctx.drawText(textRenderer, tr("Нажми на кнопку, чтобы сменить настройку",
