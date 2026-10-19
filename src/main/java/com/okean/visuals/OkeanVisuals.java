@@ -17,7 +17,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.passive.AnimalEntity;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
-import net.minecraft.util.Hand;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -25,7 +24,6 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.Arm;
 import net.fabricmc.loader.api.FabricLoader;
@@ -45,16 +43,11 @@ public class OkeanVisuals implements ClientModInitializer {
     public static boolean hudEnabled = true;
     public static boolean autoSprint = false;
     public static boolean fullbright = false;
-    public static boolean killAura = false;
-    private static AuraTarget targetMode = AuraTarget.MONSTERS;
-    private enum AuraTarget { MONSTERS, ANIMALS, PLAYERS, ALL }
-
     private boolean zoomEnabled = false;
     private int previousFov = 70;
     private boolean menuRequested = false;
     private boolean gammaOverridden = false;
     private double storedGamma = 0.5;
-    private int auraTicksSinceAttack = 20;
     private boolean appliedNightVision = false;
     public static boolean showRings = true;
     // First-person item-only appearance settings. No external shader downloads.
@@ -90,12 +83,6 @@ public class OkeanVisuals implements ClientModInitializer {
                 )
         );
 
-        KeyBinding auraKey = KeyBindingHelper.registerKeyBinding(
-                new KeyBinding("key.okeanvisuals.aura",
-                        InputUtil.Type.KEYSYM,
-                        GLFW.GLFW_KEY_R, "category.okeanvisuals")
-        );
-
         KeyBinding hudKey = KeyBindingHelper.registerKeyBinding(
                 new KeyBinding("key.okeanvisuals.hud", InputUtil.Type.KEYSYM,
                         GLFW.GLFW_KEY_H, "category.okeanvisuals")
@@ -120,13 +107,9 @@ public class OkeanVisuals implements ClientModInitializer {
                     client.options.getFov().setValue(previousFov);
                     zoomEnabled = false;
                 }
-                auraTicksSinceAttack = 20;
                 return;
             }
 
-            while (auraKey.wasPressed()) {
-                killAura = !killAura;
-            }
             while (hudKey.wasPressed()) {
                 hudEnabled = !hudEnabled;
                 OkeanMenu.saveSettings();
@@ -182,21 +165,6 @@ public class OkeanVisuals implements ClientModInitializer {
                 zoomEnabled = false;
             }
 
-            // Kill Aura: target mobs/players in reach without moving the camera.
-            // Default mode is hostile mobs only. Respect normal attack cooldown.
-            auraTicksSinceAttack++;
-            if (killAura && client.currentScreen == null && client.interactionManager != null) {
-                LivingEntity target = findAuraTarget(client);
-                if (target != null) {
-                    turnBodyToward(client, target);
-                    if (auraTicksSinceAttack >= 12
-                            && client.player.getAttackCooldownProgress(0.0f) >= 0.95f) {
-                        client.interactionManager.attackEntity(client.player, target);
-                        client.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
-                        auraTicksSinceAttack = 0;
-                    }
-                }
-            }
         });
     }
 
@@ -265,60 +233,12 @@ public class OkeanVisuals implements ClientModInitializer {
                                         })
                         )
 
-                        // /okean aura
-                        .then(
-                                ClientCommandManager.literal("aura")
-                                        .executes(context -> {
-                                            killAura = !killAura;
-                                            return 1;
-                                        })
-                        )
         );
     }
 
     // =========================
     // HUD
     // =========================
-
-    // =========================
-    // KILL AURA
-    // =========================
-
-    private LivingEntity findAuraTarget(MinecraftClient client) {
-        LivingEntity nearest = null;
-        double nearestSquared = 3.0 * 3.0;
-
-        for (LivingEntity entity : client.world.getEntitiesByClass(
-                LivingEntity.class,
-                client.player.getBoundingBox().expand(3.0),
-                e -> e != client.player && e.isAlive() && !e.isSpectator())) {
-
-            boolean eligible = switch (targetMode) {
-                case MONSTERS -> entity instanceof HostileEntity;
-                case ANIMALS -> entity instanceof AnimalEntity;
-                case PLAYERS -> entity instanceof PlayerEntity;
-                case ALL -> entity instanceof HostileEntity || entity instanceof AnimalEntity
-                        || entity instanceof PlayerEntity;
-            };
-            if (!eligible || !client.player.canSee(entity)) {
-                continue;
-            }
-            double d = client.player.squaredDistanceTo(entity);
-            if (d < nearestSquared) {
-                nearestSquared = d;
-                nearest = entity;
-            }
-        }
-        return nearest;
-    }
-
-    private void turnBodyToward(MinecraftClient client, LivingEntity target) {
-        Vec3d diff = target.getEyePos().subtract(client.player.getEyePos());
-        float desiredYaw = (float) Math.toDegrees(Math.atan2(diff.z, diff.x)) - 90.0f;
-        // Third-person model orientation only. Never call setYaw/setPitch (camera).
-        client.player.setBodyYaw(desiredYaw);
-        client.player.setHeadYaw(desiredYaw);
-    }
 
     private void renderTargetRings(WorldRenderContext context) {
         if (!showRings || context.consumers() == null || context.matrixStack() == null) return;
@@ -430,15 +350,6 @@ public class OkeanVisuals implements ClientModInitializer {
             return MinecraftClient.getInstance().options.getMainArm().getValue();
         }
 
-        private static String targetName() {
-            return switch (targetMode) {
-                case MONSTERS -> tr("Монстры", "Monsters", "Монстри");
-                case ANIMALS -> tr("Животные", "Animals", "Тварини");
-                case PLAYERS -> tr("Игроки", "Players", "Гравці");
-                case ALL -> tr("Все", "All", "Усі");
-            };
-        }
-
         private static String languageName() {
             return switch (language) {
                 case RUSSIAN -> "Русский";
@@ -460,8 +371,6 @@ public class OkeanVisuals implements ClientModInitializer {
                 catch (IllegalArgumentException ignored) { language = Language.RUSSIAN; }
                 try { theme = Theme.valueOf(props.getProperty("theme", "OCEAN_BLUE")); }
                 catch (IllegalArgumentException ignored) { theme = Theme.OCEAN_BLUE; }
-                try { targetMode = AuraTarget.valueOf(props.getProperty("targets", "MONSTERS")); }
-                catch (IllegalArgumentException ignored) { targetMode = AuraTarget.MONSTERS; }
                 try {
                     opacityIndex = MathHelper.clamp(
                             Integer.parseInt(props.getProperty("opacity", "0")), 0, 2);
@@ -501,7 +410,6 @@ public class OkeanVisuals implements ClientModInitializer {
             Properties props = new Properties();
             props.setProperty("language", language.name());
             props.setProperty("theme", theme.name());
-            props.setProperty("targets", targetMode.name());
             props.setProperty("opacity", Integer.toString(opacityIndex));
             props.setProperty("itemX", Float.toString(itemX));
             props.setProperty("itemY", Float.toString(itemY));
@@ -594,27 +502,15 @@ public class OkeanVisuals implements ClientModInitializer {
                             saveSettings();
                             clearAndInit();
                         });
-                addAction("Kill Aura: " + (killAura ? "ON" : "OFF"),
-                        rowX, rowY + 2 * rowGap, rowW, 22, b -> {
-                            killAura = !killAura;
-                            clearAndInit();
-                        });
-                addAction(tr("Цели: ", "Targets: ", "Цілі: ") + targetName(),
-                        rowX, rowY + 3 * rowGap, rowW, 22, b -> {
-                            targetMode = AuraTarget.values()[
-                                (targetMode.ordinal() + 1) % AuraTarget.values().length];
-                            saveSettings();
-                            clearAndInit();
-                        });
                 addAction("AutoSprint: " + (autoSprint ? "ON" : "OFF"),
-                        rowX, rowY + 4 * rowGap, rowW, 22, b -> {
+                        rowX, rowY + 2 * rowGap, rowW, 22, b -> {
                             autoSprint = !autoSprint;
                             saveSettings();
                             clearAndInit();
                         });
                 addAction(tr("Круги целей: ", "Target rings: ", "Кола цілей: ")
                                 + (showRings ? "ON" : "OFF"),
-                        rowX, rowY + 5 * rowGap, rowW, 22, b -> {
+                        rowX, rowY + 3 * rowGap, rowW, 22, b -> {
                             showRings = !showRings;
                             saveSettings();
                             clearAndInit();
@@ -641,8 +537,7 @@ public class OkeanVisuals implements ClientModInitializer {
                             saveSettings();
                             clearAndInit();
                         });
-                addAction(tr("Горячие клавиши (R — Aura)", "Keybinds (R — Aura)",
-                                "Гарячі клавіші (R — Aura)"),
+                addAction(tr("Горячие клавиши", "Keybinds", "Гарячі клавіші"),
                         rowX, rowY + 3 * rowGap, rowW, 22, b -> {
                             MinecraftClient client = MinecraftClient.getInstance();
                             client.setScreen(new ControlsOptionsScreen(this, client.options));
@@ -697,8 +592,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.0 Test",
-                        "Version: 1.4.0 Test", "Версія: 1.4.0 Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.1 Free Test",
+                        "Version: 1.4.1 Free Test", "Версія: 1.4.1 Free Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
                 ctx.drawText(textRenderer, tr("Новости: HUD, 5 цветов и новое небо",
                         "News: HUD, 5 themes, new sky", "Новини: HUD, 5 кольорів і нове небо"),
@@ -706,8 +601,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
                         tx, ty + 68, 0xFFB8D6EB, true);
-                ctx.drawText(textRenderer, tr("Aura: только по желанию (OFF по умолчанию)",
-                        "Aura: opt-in (OFF by default)", "Aura: за бажанням (OFF спочатку)"),
+                ctx.drawText(textRenderer, tr("Free: основная версия в разработке",
+                        "Free: preparing the base version", "Free: готуємо базову версію"),
                         tx, ty + 90, 0xFFB8D6EB, true);
             } else if (tab == Tab.SETTINGS) {
                 ctx.drawText(textRenderer, tr("Нажми на кнопку, чтобы сменить настройку",
