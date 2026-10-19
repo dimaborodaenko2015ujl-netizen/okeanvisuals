@@ -4,8 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "client": [
     "OkeanHeldItemMixin",
-    "OkeanMouseMixin",
-    "OkeanSkyMixin"
+    "OkeanMouseMixin"
   ],
   "injectors": {
     "defaultRequire": 1
