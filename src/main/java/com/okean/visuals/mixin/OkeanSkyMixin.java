@@ -8,18 +8,27 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-// Two optional sky color modes: vanilla and brighter ocean-blue tint.
-// This adjusts sky color; it isn't a shader/resource-pack replacement.
+/**
+ * ClientWorld#getSkyColor returns an integer ARGB/RGB color in Minecraft 1.21.4.
+ * Treating it as Vec3d caused ClassCastException when the sky theme was enabled.
+ */
 @Mixin(ClientWorld.class)
 public abstract class OkeanSkyMixin {
-    @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true, require = 0)
-    private void okean$skyTint(Vec3d cameraPos, float tickDelta, CallbackInfoReturnable<Vec3d> cir) {
-        if (OkeanHud.skyStyle == 0) return;
-        Vec3d vanilla = cir.getReturnValue();
-        if (vanilla == null) return;
-        cir.setReturnValue(new Vec3d(
-                Math.min(1.0, vanilla.x * 0.72 + 0.03),
-                Math.min(1.0, vanilla.y * 0.94 + 0.025),
-                Math.min(1.0, vanilla.z * 1.12 + 0.03)));
+    @Inject(method = "getSkyColor", at = @At("RETURN"), cancellable = true)
+    private void okean$skyTint(Vec3d cameraPos, float tickDelta,
+                               CallbackInfoReturnable<Integer> cir) {
+        if (OkeanHud.skyStyle == 0) return; // Keep vanilla untouched.
+
+        int vanilla = cir.getReturnValue();
+        int r = (vanilla >>> 16) & 0xFF;
+        int g = (vanilla >>> 8) & 0xFF;
+        int b = vanilla & 0xFF;
+
+        // A gentle blue tint; preserve existing transparency/alpha.
+        int red = Math.min(255, (int) Math.round(r * 0.72 + 8));
+        int green = Math.min(255, (int) Math.round(g * 0.94 + 6));
+        int blue = Math.min(255, (int) Math.round(b * 1.12 + 8));
+
+        cir.setReturnValue((vanilla & 0xFF000000) | (red << 16) | (green << 8) | blue);
     }
 }
