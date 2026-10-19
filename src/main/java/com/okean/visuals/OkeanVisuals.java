@@ -57,6 +57,12 @@ public class OkeanVisuals implements ClientModInitializer {
     private int auraTicksSinceAttack = 20;
     private boolean appliedNightVision = false;
     public static boolean showRings = true;
+    // First-person item-only appearance settings. No external shader downloads.
+    public static float itemX = 0.0f, itemY = 0.0f, itemZ = 0.0f;
+    public static float itemScale = 1.0f;
+    public static int handAnimation = 0; // 0=normal, 1=float, 2=sway
+    public static int itemEffect = 0; // 0=normal, 1=glow, 2=pulse
+
 
     @Override
     public void onInitializeClient() {
@@ -466,6 +472,7 @@ public class OkeanVisuals implements ClientModInitializer {
         private int py;
         private int pw;
         private int ph;
+        private int handButtonX, handButtonY, handButtonW;
 
         public OkeanMenu() {
             super(Text.literal("Okean Visuals"));
@@ -548,12 +555,26 @@ public class OkeanVisuals implements ClientModInitializer {
                 try {
                     opacityIndex = MathHelper.clamp(
                             Integer.parseInt(props.getProperty("opacity", "0")), 0, 2);
-                } catch (NumberFormatException ignored) {
-                    opacityIndex = 0;
-                }
+                } catch (NumberFormatException ignored) { opacityIndex = 0; }
+                itemX = parseFloat(props, "itemX", 0.0f, -1.0f, 1.0f);
+                itemY = parseFloat(props, "itemY", 0.0f, -1.0f, 1.0f);
+                itemZ = parseFloat(props, "itemZ", 0.0f, -1.0f, 1.0f);
+                itemScale = parseFloat(props, "itemScale", 1.0f, 0.5f, 2.0f);
+                handAnimation = parseInt(props, "handAnimation", 0, 2);
+                itemEffect = parseInt(props, "itemEffect", 0, 2);
             } catch (IOException e) {
                 System.err.println("Okean Visuals: could not load settings: " + e.getMessage());
             }
+        }
+
+        private static float parseFloat(Properties props, String name, float fallback, float min, float max) {
+            try { return MathHelper.clamp(Float.parseFloat(props.getProperty(name)), min, max); }
+            catch (RuntimeException ignored) { return fallback; }
+        }
+
+        private static int parseInt(Properties props, String name, int fallback, int max) {
+            try { return MathHelper.clamp(Integer.parseInt(props.getProperty(name)), 0, max); }
+            catch (RuntimeException ignored) { return fallback; }
         }
 
         private static void saveSettings() {
@@ -562,6 +583,12 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("theme", theme.name());
             props.setProperty("targets", targetMode.name());
             props.setProperty("opacity", Integer.toString(opacityIndex));
+            props.setProperty("itemX", Float.toString(itemX));
+            props.setProperty("itemY", Float.toString(itemY));
+            props.setProperty("itemZ", Float.toString(itemZ));
+            props.setProperty("itemScale", Float.toString(itemScale));
+            props.setProperty("handAnimation", Integer.toString(handAnimation));
+            props.setProperty("itemEffect", Integer.toString(itemEffect));
             try {
                 Files.createDirectories(CONFIG_PATH.getParent());
                 try (OutputStream out = Files.newOutputStream(CONFIG_PATH)) {
@@ -622,19 +649,14 @@ public class OkeanVisuals implements ClientModInitializer {
             int rowW = pw - 70;
             int rowY = tabY + 37;
             int rowGap = 26;
+            handButtonX = rowX; handButtonY = rowY; handButtonW = rowW;
 
             if (tab == Tab.MISC) {
                 Arm selectedArm = clientArm();
-                addAction(tr("Рука: ", "Main hand: ", "Рука: ")
-                                + (selectedArm == Arm.RIGHT
-                                    ? tr("Правая", "Right", "Права")
-                                    : tr("Левая", "Left", "Ліва")),
+                addAction(tr("Расположение рук (ПКМ)", "Hand positions (right-click)",
+                                "Розташування рук (ПКМ)"),
                         rowX, rowY, rowW, 22, b -> {
-                            MinecraftClient client = MinecraftClient.getInstance();
-                            client.options.getMainArm().setValue(
-                                    clientArm() == Arm.RIGHT ? Arm.LEFT : Arm.RIGHT);
-                            client.options.write();
-                            clearAndInit();
+                            MinecraftClient.getInstance().setScreen(new HandEditorScreen(this));
                         });
                 addAction("Fullbright: " + (fullbright ? "ON" : "OFF"),
                         rowX, rowY + rowGap, rowW, 22, b -> {
@@ -700,6 +722,17 @@ public class OkeanVisuals implements ClientModInitializer {
         }
 
         @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (tab == Tab.MISC && button == 1
+                    && mouseX >= handButtonX && mouseX <= handButtonX + handButtonW
+                    && mouseY >= handButtonY && mouseY <= handButtonY + 22) {
+                MinecraftClient.getInstance().setScreen(new HandEditorScreen(this));
+                return true;
+            }
+            return super.mouseClicked(mouseX, mouseY, button);
+        }
+
+        @Override
         public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
             ctx.fill(0, 0, width, height, 0xA0000614);
             ctx.fill(px, py, px + pw, py + ph, panelColor());
@@ -726,11 +759,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.2.0 Test",
-                        "Version: 1.2.0 Test", "Версія: 1.2.0 Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.3.0 Test",
+                        "Version: 1.3.0 Test", "Версія: 1.3.0 Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Новости: Kill Aura, руки и настройки",
-                        "News: Kill Aura, hands, settings", "Новини: Kill Aura, руки, налаштування"),
+                ctx.drawText(textRenderer, tr("Новости: круги, бинды, редактор рук",
+                        "News: rings, keybinds, item editor", "Новини: кола, клавіші, редактор рук"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
@@ -746,6 +779,104 @@ public class OkeanVisuals implements ClientModInitializer {
             }
 
             super.render(ctx, mouseX, mouseY, delta);
+        }
+
+        @Override
+        public boolean shouldPause() {
+            return false;
+        }
+    }
+
+    // Small separate first-person held-item editor.
+    public static class HandEditorScreen extends Screen {
+        private final Screen parent;
+        private int x, y, w, h;
+
+        public HandEditorScreen(Screen parent) {
+            super(Text.literal("Okean Visuals - Hand Editor"));
+            this.parent = parent;
+        }
+
+        private void button(String label, int bx, int by, int bw, Runnable action) {
+            addDrawableChild(ButtonWidget.builder(Text.literal(label), b -> {
+                action.run();
+                OkeanMenu.saveSettings();
+                clearAndInit();
+            }).dimensions(bx, by, bw, 20).build());
+        }
+
+        private void step(int row, String label, Runnable minus, Runnable plus) {
+            int by = y + 39 + row * 27;
+            button("-", x + w - 96, by, 39, minus);
+            button("+", x + w - 50, by, 39, plus);
+        }
+
+        @Override
+        protected void init() {
+            w = Math.min(360, width - 24);
+            h = Math.min(280, height - 20);
+            x = (width - w) / 2;
+            y = (height - h) / 2;
+            step(0, "X", () -> itemX = clamp(itemX - 0.05f, -1, 1),
+                    () -> itemX = clamp(itemX + 0.05f, -1, 1));
+            step(1, "Y", () -> itemY = clamp(itemY - 0.05f, -1, 1),
+                    () -> itemY = clamp(itemY + 0.05f, -1, 1));
+            step(2, "Z", () -> itemZ = clamp(itemZ - 0.05f, -1, 1),
+                    () -> itemZ = clamp(itemZ + 0.05f, -1, 1));
+            step(3, "Size", () -> itemScale = clamp(itemScale - 0.05f, 0.5f, 2.0f),
+                    () -> itemScale = clamp(itemScale + 0.05f, 0.5f, 2.0f));
+            step(4, "Animation", () -> handAnimation = (handAnimation + 2) % 3,
+                    () -> handAnimation = (handAnimation + 1) % 3);
+            step(5, "Item effect", () -> itemEffect = (itemEffect + 2) % 3,
+                    () -> itemEffect = (itemEffect + 1) % 3);
+            button(OkeanMenu.tr("Сбросить", "Reset", "Скинути"),
+                    x + 20, y + h - 33, 104, () -> {
+                        itemX = 0; itemY = 0; itemZ = 0;
+                        itemScale = 1; handAnimation = 0; itemEffect = 0;
+                    });
+            addDrawableChild(ButtonWidget.builder(Text.literal(
+                    OkeanMenu.tr("Готово", "Done", "Готово")), b -> close())
+                    .dimensions(x + w - 128, y + h - 33, 104, 20).build());
+        }
+
+        private static float clamp(float value, float min, float max) {
+            return Math.round(MathHelper.clamp(value, min, max) * 20f) / 20f;
+        }
+
+        @Override
+        public boolean mouseScrolled(double mx, double my, double horizontal, double vertical) {
+            handAnimation = (handAnimation + (vertical > 0 ? 2 : 1)) % 3;
+            OkeanMenu.saveSettings();
+            clearAndInit();
+            return true;
+        }
+
+        @Override
+        public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            ctx.fill(0, 0, width, height, 0xA0000614);
+            ctx.fill(x, y, x + w, y + h, OkeanMenu.panelColor());
+            ctx.drawBorder(x, y, w, h, OkeanMenu.accent());
+            ctx.drawText(textRenderer, "ITEM EDITOR", x + 16, y + 14, OkeanMenu.accent(), true);
+            String[] rows = {
+                String.format(java.util.Locale.ROOT, "X: %.2f", itemX),
+                String.format(java.util.Locale.ROOT, "Y: %.2f", itemY),
+                String.format(java.util.Locale.ROOT, "Z: %.2f", itemZ),
+                String.format(java.util.Locale.ROOT, "Size: %.2f", itemScale),
+                "Motion: " + switch (handAnimation) {
+                    case 1 -> "Float"; case 2 -> "Sway"; default -> "Normal"; },
+                "Effect: " + switch (itemEffect) {
+                    case 1 -> "Glow"; case 2 -> "Pulse"; default -> "Normal"; }
+            };
+            for (int i = 0; i < rows.length; i++) {
+                ctx.drawText(textRenderer, rows[i], x + 16, y + 45 + i * 27,
+                        0xFFB8D6EB, true);
+            }
+            super.render(ctx, mouseX, mouseY, delta);
+        }
+
+        @Override
+        public void close() {
+            MinecraftClient.getInstance().setScreen(parent);
         }
 
         @Override
