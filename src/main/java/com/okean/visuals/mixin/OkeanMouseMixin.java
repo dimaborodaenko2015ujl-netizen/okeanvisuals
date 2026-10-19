@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // Records *actual mouse press events*, so fast CPS isn't capped at 20 game ticks.
 @Mixin(Mouse.class)
 public abstract class OkeanMouseMixin {
-    @Inject(method = "onMouseButton", at = @At("HEAD"))
+    @Inject(method = "onMouseButton", at = @At("HEAD"), require = 0)
     private void okean$onMouseButton(long window, int button, int action, int mods, CallbackInfo ci) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client != null && client.currentScreen == null
