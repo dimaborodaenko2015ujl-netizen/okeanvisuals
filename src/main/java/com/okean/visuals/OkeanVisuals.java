@@ -643,8 +643,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.5.0 Plus Mini Test",
-                        "Version: 1.5.0 Plus Mini Test", "Версія: 1.5.0 Plus Mini Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.5.1 Plus Mini Test",
+                        "Version: 1.5.1 Plus Mini Test", "Версія: 1.5.1 Plus Mini Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
                 ctx.drawText(textRenderer, tr("Plus Mini: RGB, шляпа, пресеты",
                         "Plus Mini: RGB, hat, presets", "Plus Mini: RGB, капелюх, пресети"),
