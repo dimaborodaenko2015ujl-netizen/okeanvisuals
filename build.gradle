@@ -2,7 +2,7 @@ plugins {
     id 'fabric-loom' version '1.8.11'
 }
 
-version = '1.5.0-plus-mini-test'
+version = '1.5.1-plus-mini-test'
 group = 'com.okean.visuals'
 
 repositories {
