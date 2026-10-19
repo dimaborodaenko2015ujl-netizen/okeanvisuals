@@ -96,8 +96,13 @@ public class OkeanVisuals implements ClientModInitializer {
                         GLFW.GLFW_KEY_R, "category.okeanvisuals")
         );
 
+        KeyBinding hudKey = KeyBindingHelper.registerKeyBinding(
+                new KeyBinding("key.okeanvisuals.hud", InputUtil.Type.KEYSYM,
+                        GLFW.GLFW_KEY_H, "category.okeanvisuals")
+        );
+
         // HUD and world-space target indicators
-        HudRenderCallback.EVENT.register(this::renderHUD);
+        HudRenderCallback.EVENT.register(OkeanHud::render);
         WorldRenderEvents.AFTER_ENTITIES.register(this::renderTargetRings);
 
         // Команды
@@ -121,6 +126,10 @@ public class OkeanVisuals implements ClientModInitializer {
 
             while (auraKey.wasPressed()) {
                 killAura = !killAura;
+            }
+            while (hudKey.wasPressed()) {
+                hudEnabled = !hudEnabled;
+                OkeanMenu.saveSettings();
             }
 
             if (menuRequested) {
@@ -271,110 +280,6 @@ public class OkeanVisuals implements ClientModInitializer {
     // HUD
     // =========================
 
-    private void renderHUD(
-            DrawContext ctx,
-            net.minecraft.client.render.RenderTickCounter tickCounter) {
-
-        if (!hudEnabled) {
-            return;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-
-        if (client.player == null) {
-            return;
-        }
-
-        int x = 10;
-        int y = 10;
-        int w = 180;
-        int h = 100;
-
-        // Фон
-        ctx.fill(
-                x,
-                y,
-                x + w,
-                y + h,
-                0xB4000014
-        );
-
-        // Рамка
-        ctx.drawBorder(
-                x,
-                y,
-                w,
-                h,
-                0xFF00D4FF
-        );
-
-        int tx = x + 8;
-        int ty = y + 10;
-
-        // Название
-        ctx.drawText(
-                client.textRenderer,
-                "OKEAN VISUALS",
-                tx,
-                ty,
-                0xFF00D4FF,
-                true
-        );
-
-        ty += 16;
-
-        // Координаты
-        ctx.drawText(
-                client.textRenderer,
-                String.format(
-                        "XYZ: %.1f / %.1f / %.1f",
-                        client.player.getX(),
-                        client.player.getY(),
-                        client.player.getZ()
-                ),
-                tx,
-                ty,
-                0xFF88CCFF,
-                true
-        );
-
-        ty += 12;
-
-        // FPS
-        ctx.drawText(
-                client.textRenderer,
-                "FPS: " + client.getCurrentFps(),
-                tx,
-                ty,
-                0xFFFFFFFF,
-                true
-        );
-
-        ty += 12;
-
-        // Sprint
-        ctx.drawText(
-                client.textRenderer,
-                "Sprint: " + (autoSprint ? "ON" : "OFF"),
-                tx,
-                ty,
-                autoSprint ? 0xFF44FF44 : 0xFFFF4444,
-                true
-        );
-
-        ty += 12;
-
-        // Kill Aura
-        ctx.drawText(
-                client.textRenderer,
-                "Kill Aura: " + (killAura ? "ON" : "OFF"),
-                tx,
-                ty,
-                killAura ? 0xFF44FF44 : 0xFFFF4444,
-                true
-        );
-    }
-
     // =========================
     // KILL AURA
     // =========================
@@ -460,7 +365,7 @@ public class OkeanVisuals implements ClientModInitializer {
     public static class OkeanMenu extends Screen {
         private enum Tab { MISC, HUB, SETTINGS }
         private enum Language { RUSSIAN, ENGLISH, UKRAINIAN }
-        private enum Theme { OCEAN_BLUE, DARK_PURPLE, MIDNIGHT }
+        private enum Theme { OCEAN_BLUE, DARK_PURPLE, MIDNIGHT, EMERALD, SUNSET }
 
         private static Language language = Language.RUSSIAN;
         private static Theme theme = Theme.OCEAN_BLUE;
@@ -477,7 +382,7 @@ public class OkeanVisuals implements ClientModInitializer {
             super(Text.literal("Okean Visuals"));
         }
 
-        private static String tr(String ru, String en, String uk) {
+        public static String tr(String ru, String en, String uk) {
             return switch (language) {
                 case RUSSIAN -> ru;
                 case ENGLISH -> en;
@@ -485,15 +390,17 @@ public class OkeanVisuals implements ClientModInitializer {
             };
         }
 
-        private static int accent() {
+        public static int accent() {
             return switch (theme) {
                 case OCEAN_BLUE -> 0xFF40D7FF;
                 case DARK_PURPLE -> 0xFFBB88FF;
                 case MIDNIGHT -> 0xFF9AB4D6;
+                case EMERALD -> 0xFF5BEAAB;
+                case SUNSET -> 0xFFFFAA63;
             };
         }
 
-        private static int panelColor() {
+        public static int panelColor() {
             int alpha = switch (opacityIndex) {
                 case 1 -> 0xB8;
                 case 2 -> 0xF5;
@@ -503,6 +410,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 case OCEAN_BLUE -> 0x0C1222;
                 case DARK_PURPLE -> 0x180E29;
                 case MIDNIGHT -> 0x0C1119;
+                case EMERALD -> 0x09251A;
+                case SUNSET -> 0x291524;
             };
             return (alpha << 24) | rgb;
         }
@@ -512,6 +421,8 @@ public class OkeanVisuals implements ClientModInitializer {
                 case OCEAN_BLUE -> "Ocean Blue";
                 case DARK_PURPLE -> "Dark Purple";
                 case MIDNIGHT -> "Midnight";
+                case EMERALD -> "Emerald";
+                case SUNSET -> "Sunset";
             };
         }
 
@@ -561,6 +472,16 @@ public class OkeanVisuals implements ClientModInitializer {
                 itemScale = parseFloat(props, "itemScale", 1.0f, 0.5f, 2.0f);
                 handAnimation = parseInt(props, "handAnimation", 0, 2);
                 itemEffect = parseInt(props, "itemEffect", 0, 2);
+                OkeanHud.x = parseInt(props, "hudX", 10, 20000);
+                OkeanHud.y = parseInt(props, "hudY", 10, 20000);
+                OkeanHud.scale = parseFloat(props, "hudScale", 1.0f, 0.75f, 1.75f);
+                OkeanHud.showWasd = Boolean.parseBoolean(props.getProperty("wasd", "true"));
+                OkeanHud.plusCrosshair = Boolean.parseBoolean(props.getProperty("crosshair", "false"));
+                OkeanHud.skyStyle = parseInt(props, "skyStyle", 0, 1);
+                hudEnabled = Boolean.parseBoolean(props.getProperty("hudEnabled", "true"));
+                showRings = Boolean.parseBoolean(props.getProperty("showRings", "true"));
+                autoSprint = Boolean.parseBoolean(props.getProperty("autoSprint", "false"));
+                fullbright = Boolean.parseBoolean(props.getProperty("fullbright", "false"));
             } catch (IOException e) {
                 System.err.println("Okean Visuals: could not load settings: " + e.getMessage());
             }
@@ -576,7 +497,7 @@ public class OkeanVisuals implements ClientModInitializer {
             catch (RuntimeException ignored) { return fallback; }
         }
 
-        private static void saveSettings() {
+        public static void saveSettings() {
             Properties props = new Properties();
             props.setProperty("language", language.name());
             props.setProperty("theme", theme.name());
@@ -588,6 +509,16 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("itemScale", Float.toString(itemScale));
             props.setProperty("handAnimation", Integer.toString(handAnimation));
             props.setProperty("itemEffect", Integer.toString(itemEffect));
+            props.setProperty("hudX", Integer.toString(OkeanHud.x));
+            props.setProperty("hudY", Integer.toString(OkeanHud.y));
+            props.setProperty("hudScale", Float.toString(OkeanHud.scale));
+            props.setProperty("wasd", Boolean.toString(OkeanHud.showWasd));
+            props.setProperty("crosshair", Boolean.toString(OkeanHud.plusCrosshair));
+            props.setProperty("skyStyle", Integer.toString(OkeanHud.skyStyle));
+            props.setProperty("hudEnabled", Boolean.toString(hudEnabled));
+            props.setProperty("showRings", Boolean.toString(showRings));
+            props.setProperty("autoSprint", Boolean.toString(autoSprint));
+            props.setProperty("fullbright", Boolean.toString(fullbright));
             try {
                 Files.createDirectories(CONFIG_PATH.getParent());
                 try (OutputStream out = Files.newOutputStream(CONFIG_PATH)) {
@@ -660,6 +591,7 @@ public class OkeanVisuals implements ClientModInitializer {
                 addAction("Fullbright: " + (fullbright ? "ON" : "OFF"),
                         rowX, rowY + rowGap, rowW, 22, b -> {
                             fullbright = !fullbright;
+                            saveSettings();
                             clearAndInit();
                         });
                 addAction("Kill Aura: " + (killAura ? "ON" : "OFF"),
@@ -677,12 +609,14 @@ public class OkeanVisuals implements ClientModInitializer {
                 addAction("AutoSprint: " + (autoSprint ? "ON" : "OFF"),
                         rowX, rowY + 4 * rowGap, rowW, 22, b -> {
                             autoSprint = !autoSprint;
+                            saveSettings();
                             clearAndInit();
                         });
                 addAction(tr("Круги целей: ", "Target rings: ", "Кола цілей: ")
                                 + (showRings ? "ON" : "OFF"),
                         rowX, rowY + 5 * rowGap, rowW, 22, b -> {
                             showRings = !showRings;
+                            saveSettings();
                             clearAndInit();
                         });
             } else if (tab == Tab.SETTINGS) {
@@ -712,6 +646,11 @@ public class OkeanVisuals implements ClientModInitializer {
                         rowX, rowY + 3 * rowGap, rowW, 22, b -> {
                             MinecraftClient client = MinecraftClient.getInstance();
                             client.setScreen(new ControlsOptionsScreen(this, client.options));
+                        });
+                addAction(tr("HUD и небо", "HUD and sky", "HUD і небо"),
+                        rowX, rowY + 4 * rowGap, rowW, 22, b -> {
+                            MinecraftClient.getInstance().setScreen(
+                                    new OkeanHud.VisualSettingsScreen(this));
                         });
             }
 
@@ -758,11 +697,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.3.0 Test",
-                        "Version: 1.3.0 Test", "Версія: 1.3.0 Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.0 Test",
+                        "Version: 1.4.0 Test", "Версія: 1.4.0 Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Новости: круги, бинды, редактор рук",
-                        "News: rings, keybinds, item editor", "Новини: кола, клавіші, редактор рук"),
+                ctx.drawText(textRenderer, tr("Новости: HUD, 5 цветов и новое небо",
+                        "News: HUD, 5 themes, new sky", "Новини: HUD, 5 кольорів і нове небо"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
