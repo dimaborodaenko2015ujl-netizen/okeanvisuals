@@ -90,6 +90,7 @@ public class OkeanVisuals implements ClientModInitializer {
         // HUD and world-space target indicators
         HudRenderCallback.EVENT.register(OkeanHud::render);
         WorldRenderEvents.AFTER_ENTITIES.register(this::renderTargetRings);
+        WorldRenderEvents.AFTER_ENTITIES.register(OkeanChineseHat::render);
 
         // Команды
         ClientCommandRegistrationCallback.EVENT.register(
@@ -284,7 +285,10 @@ public class OkeanVisuals implements ClientModInitializer {
     public static class OkeanMenu extends Screen {
         private enum Tab { MISC, HUB, SETTINGS }
         private enum Language { RUSSIAN, ENGLISH, UKRAINIAN }
-        private enum Theme { OCEAN_BLUE, DARK_PURPLE, MIDNIGHT, EMERALD, SUNSET }
+        private enum Theme {
+            OCEAN_BLUE, DARK_PURPLE, MIDNIGHT, EMERALD, SUNSET,
+            SAKURA, FROST, NEON, AMBER, FOREST
+        }
 
         private static Language language = Language.RUSSIAN;
         private static Theme theme = Theme.OCEAN_BLUE;
@@ -316,6 +320,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 case MIDNIGHT -> 0xFF9AB4D6;
                 case EMERALD -> 0xFF5BEAAB;
                 case SUNSET -> 0xFFFFAA63;
+                case SAKURA -> 0xFFFF94C8;
+                case FROST -> 0xFF9FE6FF;
+                case NEON -> 0xFFACFF6F;
+                case AMBER -> 0xFFFFC157;
+                case FOREST -> 0xFF73D88E;
             };
         }
 
@@ -331,6 +340,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 case MIDNIGHT -> 0x0C1119;
                 case EMERALD -> 0x09251A;
                 case SUNSET -> 0x291524;
+                case SAKURA -> 0x251426;
+                case FROST -> 0x112330;
+                case NEON -> 0x171A27;
+                case AMBER -> 0x2A1B14;
+                case FOREST -> 0x10261B;
             };
             return (alpha << 24) | rgb;
         }
@@ -342,6 +356,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 case MIDNIGHT -> "Midnight";
                 case EMERALD -> "Emerald";
                 case SUNSET -> "Sunset";
+                case SAKURA -> "Sakura";
+                case FROST -> "Frost";
+                case NEON -> "Neon";
+                case AMBER -> "Amber";
+                case FOREST -> "Forest";
             };
         }
 
@@ -392,6 +411,13 @@ public class OkeanVisuals implements ClientModInitializer {
                 showRings = Boolean.parseBoolean(props.getProperty("showRings", "true"));
                 autoSprint = Boolean.parseBoolean(props.getProperty("autoSprint", "false"));
                 fullbright = Boolean.parseBoolean(props.getProperty("fullbright", "false"));
+                OkeanPlusMini.chineseHat = Boolean.parseBoolean(props.getProperty("miniHat", "false"));
+                OkeanPlusMini.gradientHud = Boolean.parseBoolean(props.getProperty("miniGradient", "false"));
+                OkeanPlusMini.hudTransparency = parseInt(props, "miniHudOpacity", 0, 3);
+                OkeanPlusMini.roundedHud = Boolean.parseBoolean(props.getProperty("miniRounded", "false"));
+                OkeanPlusMini.colorfulWasd = Boolean.parseBoolean(props.getProperty("miniWasd", "false"));
+                OkeanPlusMini.animatedUi = Boolean.parseBoolean(props.getProperty("miniAnimatedUi", "true"));
+                OkeanPlusMini.hudColor = parseInt(props, "miniHudColor", 0, 10);
             } catch (IOException e) {
                 System.err.println("Okean Visuals: could not load settings: " + e.getMessage());
             }
@@ -428,6 +454,13 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("showRings", Boolean.toString(showRings));
             props.setProperty("autoSprint", Boolean.toString(autoSprint));
             props.setProperty("fullbright", Boolean.toString(fullbright));
+            props.setProperty("miniHat", Boolean.toString(OkeanPlusMini.chineseHat));
+            props.setProperty("miniGradient", Boolean.toString(OkeanPlusMini.gradientHud));
+            props.setProperty("miniHudOpacity", Integer.toString(OkeanPlusMini.hudTransparency));
+            props.setProperty("miniRounded", Boolean.toString(OkeanPlusMini.roundedHud));
+            props.setProperty("miniWasd", Boolean.toString(OkeanPlusMini.colorfulWasd));
+            props.setProperty("miniAnimatedUi", Boolean.toString(OkeanPlusMini.animatedUi));
+            props.setProperty("miniHudColor", Integer.toString(OkeanPlusMini.hudColor));
             try {
                 Files.createDirectories(CONFIG_PATH.getParent());
                 try (OutputStream out = Files.newOutputStream(CONFIG_PATH)) {
@@ -543,6 +576,11 @@ public class OkeanVisuals implements ClientModInitializer {
                             MinecraftClient.getInstance().setScreen(
                                     new OkeanHud.VisualSettingsScreen(this));
                         });
+                addAction(tr("Plus Mini: эффекты", "Plus Mini visuals", "Plus Mini: ефекти"),
+                        rowX, rowY + 5 * rowGap, rowW, 22, b -> {
+                            MinecraftClient.getInstance().setScreen(
+                                    new OkeanPlusMini.SettingsScreen(this));
+                        });
             }
 
             addAction(tr("Закрыть", "Close", "Закрити"),
@@ -588,17 +626,17 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.5 Free RC",
-                        "Version: 1.4.5 Free RC", "Версія: 1.4.5 Free RC"),
+                ctx.drawText(textRenderer, tr("Версия: 1.5.0 Plus Mini Test",
+                        "Version: 1.5.0 Plus Mini Test", "Версія: 1.5.0 Plus Mini Test"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Free: Visual Time (1-24), HUD, темы",
-                        "Free: Visual Time (1-24), HUD, themes", "Free: Visual Time (1-24), HUD, теми"),
+                ctx.drawText(textRenderer, tr("Plus Mini: шляпа, HUD, +5 тем",
+                        "Plus Mini: hat, HUD, +5 themes", "Plus Mini: капелюх, HUD, +5 тем"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
                         tx, ty + 68, 0xFFB8D6EB, true);
-                ctx.drawText(textRenderer, tr("Free: кандидат на выпуск",
-                        "Free: release candidate", "Free: кандидат на випуск"),
+                ctx.drawText(textRenderer, tr("Plus Mini: тестовая сборка",
+                        "Plus Mini: testing build", "Plus Mini: тестова збірка"),
                         tx, ty + 90, 0xFFB8D6EB, true);
             } else if (tab == Tab.SETTINGS) {
                 ctx.drawText(textRenderer, tr("Нажми на кнопку, чтобы сменить настройку",
