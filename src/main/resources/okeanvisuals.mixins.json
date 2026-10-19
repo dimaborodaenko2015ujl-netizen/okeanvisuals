@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "com.okean.visuals.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "OkeanHeldItemMixin",
+    "OkeanMouseMixin",
+    "OkeanSkyMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
