@@ -8,6 +8,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.text.Text;
@@ -25,6 +26,9 @@ public final class OkeanHud {
     public static float scale = 1.0f;
     public static boolean showWasd = true;
     public static boolean plusCrosshair = false;
+    // Visual Time applies to the local client-world only; the server clock is untouched.
+    public static boolean visualTimeEnabled = false;
+    public static int visualTimeHour = 12; // 1..24
 
     private static final Deque<Long> recentClicks = new ArrayDeque<>();
     private static final long ONE_SECOND = 1_000_000_000L;
@@ -78,7 +82,7 @@ public final class OkeanHud {
         int accent = OkeanVisuals.OkeanMenu.accent();
         ctx.fill(0, 0, PANEL_WIDTH, h, 0xB40C1222);
         ctx.drawBorder(0, 0, PANEL_WIDTH, h, accent);
-        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.4", 9, 9, accent, true);
+        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.5", 9, 9, accent, true);
 
         int line = 27;
         String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
@@ -160,6 +164,9 @@ public final class OkeanHud {
             option("Reset HUD position / size", row + 135, () -> {
                 x = 10; y = 10; scale = 1.0f;
             });
+            option("Visual Time: " + (visualTimeEnabled
+                    ? (visualTimeHour + ":00") : "Minecraft time"), row + 162,
+                    () -> MinecraftClient.getInstance().setScreen(new VisualTimeScreen(this)));
             addDrawableChild(OkeanButton.of("Done", left + (panelW - 115) / 2,
                     top + panelH - 29, 115, 22, b -> close()));
         }
@@ -182,6 +189,103 @@ public final class OkeanHud {
 
         @Override
         public boolean shouldPause() { return false; }
+    }
+
+    /** Dedicated control screen: no server /time command is ever sent. */
+    public static class VisualTimeScreen extends Screen {
+        private final Screen parent;
+        private int left, top, panelW, panelH;
+
+        public VisualTimeScreen(Screen parent) {
+            super(Text.literal("Okean Visuals - Visual Time"));
+            this.parent = parent;
+        }
+
+        @Override
+        protected void init() {
+            panelW = Math.min(365, width - 24);
+            panelH = Math.min(188, height - 20);
+            left = (width - panelW) / 2;
+            top = (height - panelH) / 2;
+
+            addDrawableChild(OkeanButton.of("Use Minecraft time (OFF)",
+                    left + 24, top + 43, panelW - 48, 22, b -> {
+                        visualTimeEnabled = false;
+                        OkeanVisuals.OkeanMenu.saveSettings();
+                    }));
+            addDrawableChild(new VisualTimeSlider(left + 24, top + 88, panelW - 48, 22));
+            addDrawableChild(OkeanButton.of("Done", left + (panelW - 116) / 2,
+                    top + panelH - 29, 116, 22, b -> close()));
+        }
+
+        @Override
+        public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            ctx.fill(0, 0, width, height, 0xB0000916);
+            ctx.fill(left, top, left + panelW, top + panelH,
+                    OkeanVisuals.OkeanMenu.panelColor());
+            ctx.drawBorder(left, top, panelW, panelH, OkeanVisuals.OkeanMenu.accent());
+            ctx.drawText(textRenderer, "VISUAL TIME", left + 16, top + 12,
+                    OkeanVisuals.OkeanMenu.accent(), true);
+            ctx.drawText(textRenderer, visualTimeEnabled
+                            ? "Custom time: " + visualTimeHour + ":00 (local only)"
+                            : "Following Minecraft world time",
+                    left + 24, top + 32, 0xFFD5EAFF, true);
+            ctx.drawText(textRenderer, "1:00", left + 24, top + 116, 0xFFC0DAEC, true);
+            ctx.drawText(textRenderer, "24:00", left + panelW - 53, top + 116,
+                    0xFFC0DAEC, true);
+            super.render(ctx, mouseX, mouseY, delta);
+        }
+
+        @Override
+        public void close() {
+            OkeanVisuals.OkeanMenu.saveSettings();
+            MinecraftClient.getInstance().setScreen(parent);
+        }
+
+        @Override
+        public boolean shouldPause() { return false; }
+    }
+
+    /** Custom colored SliderWidget preserves vanilla drag and keyboard accessibility. */
+    private static final class VisualTimeSlider extends SliderWidget {
+        private VisualTimeSlider(int x, int y, int width, int height) {
+            super(x, y, width, height, Text.literal("Time"),
+                    (visualTimeHour - 1) / 23.0);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            int hour = 1 + (int) Math.round(value * 23.0);
+            setMessage(Text.literal("Time: " + hour + ":00"));
+        }
+
+        @Override
+        protected void applyValue() {
+            int hour = MathHelper.clamp(1 + (int) Math.round(value * 23.0), 1, 24);
+            if (hour != visualTimeHour || !visualTimeEnabled) {
+                visualTimeHour = hour;
+                visualTimeEnabled = true;
+                OkeanVisuals.OkeanMenu.saveSettings();
+            }
+            updateMessage();
+        }
+
+        @Override
+        protected void renderWidget(DrawContext ctx, int mouseX, int mouseY, float delta) {
+            int accent = OkeanVisuals.OkeanMenu.accent();
+            int bx = getX(), by = getY(), bw = getWidth(), bh = getHeight();
+            ctx.fill(bx, by, bx + bw, by + bh, 0xE5122132);
+            ctx.drawBorder(bx, by, bw, bh, accent);
+            int barX = bx + 8, barY = by + bh - 6, track = Math.max(1, bw - 16);
+            ctx.fill(barX, barY, barX + track, barY + 2, 0xFF5B6477);
+            int filled = MathHelper.clamp((int)Math.round(value * track), 0, track);
+            ctx.fill(barX, barY, barX + filled, barY + 2, accent);
+            int handleX = barX + filled;
+            ctx.fill(handleX - 2, barY - 3, handleX + 2, barY + 5, 0xFFFFFFFF);
+            ctx.drawCenteredTextWithShadow(MinecraftClient.getInstance().textRenderer,
+                    getMessage(), bx + bw / 2, by + 4, 0xFFFFFFFF);
+        }
     }
 
     public static class HudMoveScreen extends Screen {
