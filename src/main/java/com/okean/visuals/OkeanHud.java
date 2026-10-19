@@ -25,7 +25,6 @@ public final class OkeanHud {
     public static float scale = 1.0f;
     public static boolean showWasd = true;
     public static boolean plusCrosshair = false;
-    public static int skyStyle = 0; // 0 = Vanilla; 1 = Ocean Blue
 
     private static final Deque<Long> recentClicks = new ArrayDeque<>();
     private static final long ONE_SECOND = 1_000_000_000L;
@@ -79,7 +78,7 @@ public final class OkeanHud {
         int accent = OkeanVisuals.OkeanMenu.accent();
         ctx.fill(0, 0, PANEL_WIDTH, h, 0xB40C1222);
         ctx.drawBorder(0, 0, PANEL_WIDTH, h, accent);
-        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.3", 9, 9, accent, true);
+        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.4", 9, 9, accent, true);
 
         int line = 27;
         String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
@@ -126,7 +125,7 @@ public final class OkeanHud {
         private int left, top, panelW, panelH;
 
         public VisualSettingsScreen(Screen parent) {
-            super(Text.literal("Okean Visuals - HUD & Sky"));
+            super(Text.literal("Okean Visuals - HUD"));
             this.parent = parent;
         }
 
@@ -156,11 +155,9 @@ public final class OkeanHud {
                     () -> showWasd = !showWasd);
             option("Crosshair +: " + (plusCrosshair ? "ON" : "OFF"), row + 81,
                     () -> plusCrosshair = !plusCrosshair);
-            option("Sky: " + (skyStyle == 0 ? "Vanilla" : "Ocean Blue"), row + 108,
-                    () -> skyStyle = (skyStyle + 1) % 2);
-            option("Move HUD (drag with mouse)", row + 135,
+            option("Move HUD (drag with mouse)", row + 108,
                     () -> MinecraftClient.getInstance().setScreen(new HudMoveScreen(this)));
-            option("Reset HUD position / size", row + 162, () -> {
+            option("Reset HUD position / size", row + 135, () -> {
                 x = 10; y = 10; scale = 1.0f;
             });
             addDrawableChild(OkeanButton.of("Done", left + (panelW - 115) / 2,
@@ -173,7 +170,7 @@ public final class OkeanHud {
             ctx.fill(left, top, left + panelW, top + panelH,
                     OkeanVisuals.OkeanMenu.panelColor());
             ctx.drawBorder(left, top, panelW, panelH, OkeanVisuals.OkeanMenu.accent());
-            ctx.drawText(textRenderer, "HUD + SKY SETTINGS", left + 16, top + 12,
+            ctx.drawText(textRenderer, "HUD SETTINGS", left + 16, top + 12,
                     OkeanVisuals.OkeanMenu.accent(), true);
             super.render(ctx, mouseX, mouseY, delta);
         }
