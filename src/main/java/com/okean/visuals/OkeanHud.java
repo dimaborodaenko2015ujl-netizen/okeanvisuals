@@ -33,9 +33,36 @@ public final class OkeanHud {
     private static final Deque<Long> recentClicks = new ArrayDeque<>();
     private static final long ONE_SECOND = 1_000_000_000L;
     public static final int PANEL_WIDTH = 205;
+    private static Object lastWorld = null;
+    private static boolean wasVisible = false;
+    private static long animationStartNanos = System.nanoTime();
+
+    public static int panelWidth() {
+        return switch (OkeanPlusMini.hudStyle) {
+            case 1 -> 172;
+            case 2 -> 164;
+            default -> PANEL_WIDTH;
+        };
+    }
 
     public static int panelHeight() {
-        return showWasd ? 171 : 122;
+        return switch (OkeanPlusMini.hudStyle) {
+            case 1 -> showWasd ? 111 : 75;
+            case 2 -> 52;
+            default -> showWasd ? 171 : 122;
+        };
+    }
+
+    public static void restartAnimation() {
+        animationStartNanos = System.nanoTime();
+    }
+
+    private static float hudFade() {
+        if (!OkeanPlusMini.animatedHud) return 1f;
+        float t = MathHelper.clamp(
+                (System.nanoTime() - animationStartNanos) / 650_000_000f, 0f, 1f);
+        // Smoothstep eases both ends of the fade/slide, with no abrupt jumps.
+        return t * t * (3f - 2f * t);
     }
 
     public static void recordLeftClick() {
@@ -58,7 +85,11 @@ public final class OkeanHud {
     public static void render(DrawContext ctx, RenderTickCounter tick) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || client.world == null) return;
-        if (!(client.currentScreen instanceof HudMoveScreen) && OkeanVisuals.hudEnabled) {
+        boolean visible = OkeanVisuals.hudEnabled;
+        if (visible && (!wasVisible || lastWorld != client.world)) restartAnimation();
+        wasVisible = visible;
+        lastWorld = client.world;
+        if (!(client.currentScreen instanceof HudMoveScreen) && visible) {
             drawPanel(ctx, client, x, y);
         }
         // Optional minimal '+' crosshair; vanilla crosshair remains underneath.
@@ -74,49 +105,79 @@ public final class OkeanHud {
     }
 
     public static void drawPanel(DrawContext ctx, MinecraftClient client, int posX, int posY) {
+        int style = MathHelper.clamp(OkeanPlusMini.hudStyle, 0, 2);
+        // Drag preview remains fully visible, even just after changing presets.
+        float fade = client.currentScreen instanceof HudMoveScreen ? 1f : hudFade();
         ctx.getMatrices().push();
-        ctx.getMatrices().translate(posX, posY, 0);
+        ctx.getMatrices().translate(posX, posY + (1f - fade) * 7f, 0);
         ctx.getMatrices().scale(scale, scale, 1f);
 
         int h = panelHeight();
-        int accent = OkeanPlusMini.hudAccent();
-        OkeanPlusMini.drawHudBackground(ctx, PANEL_WIDTH, h);
-        ctx.drawText(client.textRenderer, "OKEAN PLUS MINI 1.5", 9, 9, accent, true);
+        int width = panelWidth();
+        int accent = OkeanPlusMini.fadeColor(OkeanPlusMini.hudAccent(), fade);
+        OkeanPlusMini.drawHudBackground(ctx, width, h, fade);
+        ctx.drawText(client.textRenderer, "OKEAN PLUS MINI", 9, 9, accent, true);
 
-        int line = 27;
-        String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
-                client.player.getX(), client.player.getY(), client.player.getZ());
-        ctx.drawText(client.textRenderer, xyz, 9, line, 0xFFB5D9FF, true);
-        line += 14;
-        ctx.drawText(client.textRenderer, "FPS: " + client.getCurrentFps(), 9, line, 0xFFFFFFFF, true);
-        line += 14;
-        String ping = "—";
-        if (client.getNetworkHandler() != null) {
-            PlayerListEntry entry = client.getNetworkHandler().getPlayerListEntry(client.player.getUuid());
-            if (entry != null) ping = entry.getLatency() + " ms";
-        }
-        ctx.drawText(client.textRenderer, "Ping: " + ping, 9, line, 0xFFFFFFFF, true);
-        line += 14;
-        ctx.drawText(client.textRenderer, "CPS: " + currentCps(), 9, line, 0xFFFFFFFF, true);
-        line += 14;
-        ctx.drawText(client.textRenderer, "Sprint: " + (OkeanVisuals.autoSprint ? "ON" : "OFF"),
-                9, line, OkeanVisuals.autoSprint ? 0xFF55EF7A : 0xFFFF7B7B, true);
-        line += 14;
-        ctx.drawText(client.textRenderer, "Fullbright: " + (OkeanVisuals.fullbright ? "ON" : "OFF"),
-                9, line, OkeanVisuals.fullbright ? 0xFF55EF7A : 0xFFFF7B7B, true);
-        line += 14;
-        if (showWasd) {
-            int baseY = 131;
-            drawKey(ctx, client, 31, baseY, "W", client.options.forwardKey.isPressed());
-            drawKey(ctx, client, 9, baseY + 19, "A", client.options.leftKey.isPressed());
-            drawKey(ctx, client, 31, baseY + 19, "S", client.options.backKey.isPressed());
-            drawKey(ctx, client, 53, baseY + 19, "D", client.options.rightKey.isPressed());
+        if (style == 2) {
+            // Minimal: just the essential numbers, no empty decoration.
+            drawInfo(ctx, client, "FPS: " + client.getCurrentFps(), 9, 25,
+                    0xFFFFFFFF, fade);
+            drawInfo(ctx, client, "Ping: " + ping(client), 9, 38,
+                    0xFFB5D9FF, fade);
+        } else if (style == 1) {
+            // Compact: small stats + optional WASD, without status rows.
+            drawInfo(ctx, client, "FPS: " + client.getCurrentFps(), 9, 27,
+                    0xFFFFFFFF, fade);
+            drawInfo(ctx, client, "Ping: " + ping(client), 9, 41,
+                    0xFFB5D9FF, fade);
+            drawInfo(ctx, client, "CPS: " + currentCps(), 9, 55,
+                    0xFFFFFFFF, fade);
+            if (showWasd) drawWasd(ctx, client, 71, fade);
+        } else {
+            // Classic: all information from Free remains present.
+            int line = 27;
+            String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
+                    client.player.getX(), client.player.getY(), client.player.getZ());
+            drawInfo(ctx, client, xyz, 9, line, 0xFFB5D9FF, fade);
+            line += 14;
+            drawInfo(ctx, client, "FPS: " + client.getCurrentFps(), 9, line, 0xFFFFFFFF, fade);
+            line += 14;
+            drawInfo(ctx, client, "Ping: " + ping(client), 9, line, 0xFFFFFFFF, fade);
+            line += 14;
+            drawInfo(ctx, client, "CPS: " + currentCps(), 9, line, 0xFFFFFFFF, fade);
+            line += 14;
+            drawInfo(ctx, client, "Sprint: " + (OkeanVisuals.autoSprint ? "ON" : "OFF"),
+                    9, line, OkeanVisuals.autoSprint ? 0xFF55EF7A : 0xFFFF7B7B, fade);
+            line += 14;
+            drawInfo(ctx, client, "Fullbright: " + (OkeanVisuals.fullbright ? "ON" : "OFF"),
+                    9, line, OkeanVisuals.fullbright ? 0xFF55EF7A : 0xFFFF7B7B, fade);
+            if (showWasd) drawWasd(ctx, client, 131, fade);
         }
         ctx.getMatrices().pop();
     }
 
+    private static String ping(MinecraftClient client) {
+        if (client.getNetworkHandler() == null) return "—";
+        PlayerListEntry entry = client.getNetworkHandler()
+                .getPlayerListEntry(client.player.getUuid());
+        return entry != null ? entry.getLatency() + " ms" : "—";
+    }
+
+    private static void drawInfo(DrawContext ctx, MinecraftClient client, String value,
+                                 int bx, int by, int color, float fade) {
+        ctx.drawText(client.textRenderer, value, bx, by,
+                OkeanPlusMini.fadeColor(color, fade), true);
+    }
+
+    private static void drawWasd(DrawContext ctx, MinecraftClient client, int baseY, float fade) {
+        drawKey(ctx, client, 31, baseY, "W", client.options.forwardKey.isPressed(), fade);
+        drawKey(ctx, client, 9, baseY + 19, "A", client.options.leftKey.isPressed(), fade);
+        drawKey(ctx, client, 31, baseY + 19, "S", client.options.backKey.isPressed(), fade);
+        drawKey(ctx, client, 53, baseY + 19, "D", client.options.rightKey.isPressed(), fade);
+    }
+
     private static void drawKey(DrawContext ctx, MinecraftClient client, int bx, int by,
-                                String label, boolean down) {
+                                String label, boolean down, float fade) {
         int keyColor = switch (label) {
             case "W" -> 0xFF52F0BB;
             case "A" -> 0xFF6BBEFF;
@@ -127,10 +188,10 @@ public final class OkeanHud {
         int dark = colored ? (0xD0000000 | ((keyColor & 0x00FFFFFF) >>> 2)) : 0xB435435A;
         int bg = down ? (colored ? (0xE0000000 | (keyColor & 0x00FFFFFF)) : 0xCF2D805B) : dark;
         int edge = colored ? keyColor : (down ? 0xFF55EF7A : 0xFF839AB5);
-        ctx.fill(bx, by, bx + 19, by + 18, bg);
-        ctx.drawBorder(bx, by, 19, 18, edge);
+        ctx.fill(bx, by, bx + 19, by + 18, OkeanPlusMini.fadeColor(bg, fade));
+        ctx.drawBorder(bx, by, 19, 18, OkeanPlusMini.fadeColor(edge, fade));
         ctx.drawText(client.textRenderer, label, bx + 6, by + 5,
-                down ? 0xFFFFFFFF : 0xFFD6DFE7, true);
+                OkeanPlusMini.fadeColor(down ? 0xFFFFFFFF : 0xFFD6DFE7, fade), true);
     }
 
     public static class VisualSettingsScreen extends Screen {
@@ -315,7 +376,7 @@ public final class OkeanHud {
 
         @Override
         public boolean mouseClicked(double mx, double my, int button) {
-            if (button == 0 && mx >= x && mx < x + PANEL_WIDTH * scale
+            if (button == 0 && mx >= x && mx < x + panelWidth() * scale
                     && my >= y && my < y + panelHeight() * scale) {
                 dragging = true;
                 grabX = (int) mx - x;
@@ -329,7 +390,7 @@ public final class OkeanHud {
         public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
             if (dragging && button == 0) {
                 x = MathHelper.clamp((int) mx - grabX, 0,
-                        Math.max(0, width - Math.round(PANEL_WIDTH * scale)));
+                        Math.max(0, width - Math.round(panelWidth() * scale)));
                 y = MathHelper.clamp((int) my - grabY, 0,
                         Math.max(0, height - Math.round(panelHeight() * scale)));
                 return true;
