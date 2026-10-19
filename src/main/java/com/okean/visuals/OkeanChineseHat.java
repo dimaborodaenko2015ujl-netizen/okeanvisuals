@@ -34,6 +34,7 @@ public final class OkeanChineseHat {
         final int segments = 32;
         final float r = 0.55f;
         final float centerY = 0.28f;
+        int tint = OkeanPlusMini.hatColor();
         for (int i = 0; i < segments; ++i) {
             double a = 2.0 * Math.PI * i / segments;
             double b = 2.0 * Math.PI * (i + 1) / segments;
@@ -41,16 +42,18 @@ public final class OkeanChineseHat {
             float z1 = (float) Math.sin(a) * r;
             float x2 = (float) Math.cos(b) * r;
             float z2 = (float) Math.sin(b) * r;
-            int shade = 207 - (i % 4) * 6;
+            int shaded = darken(tint, 1f - (i % 4) * 0.045f);
+            int brim = darken(tint, 1.12f);
+            int underside = darken(tint, 0.53f);
             quad(quads, matrices,
                     0, centerY, 0, x1, 0, z1,
                     x2, 0, z2, x2, 0, z2,
-                    shade, 173 - (i % 4) * 5, 118);
+                    (shaded >>> 16) & 255, (shaded >>> 8) & 255, shaded & 255);
             // Duplicate reversed winding so the cone stays visible from both sides.
             quad(quads, matrices,
                     0, centerY, 0, x2, 0, z2,
                     x1, 0, z1, x1, 0, z1,
-                    shade, 173 - (i % 4) * 5, 118);
+                    (shaded >>> 16) & 255, (shaded >>> 8) & 255, shaded & 255);
             // Flat rim: subtly turquoise edge on the hat.
             float innerR = 0.47f;
             float ix1 = (float)Math.cos(a) * innerR;
@@ -58,12 +61,21 @@ public final class OkeanChineseHat {
             float ix2 = (float)Math.cos(b) * innerR;
             float iz2 = (float)Math.sin(b) * innerR;
             quad(quads, matrices, ix1, 0.006f, iz1, x1, 0.006f, z1,
-                    x2, 0.006f, z2, ix2, 0.006f, iz2, 48, 194, 184);
+                    x2, 0.006f, z2, ix2, 0.006f, iz2,
+                    (brim >>> 16) & 255, (brim >>> 8) & 255, brim & 255);
             // Shaded underside of the straw hat.
             quad(quads, matrices, 0, -0.005f, 0, x2, -0.005f, z2,
-                    x1, -0.005f, z1, x1, -0.005f, z1, 123, 92, 60);
+                    x1, -0.005f, z1, x1, -0.005f, z1,
+                    (underside >>> 16) & 255, (underside >>> 8) & 255, underside & 255);
         }
         matrices.pop();
+    }
+
+    private static int darken(int color, float amount) {
+        int r = Math.min(255, Math.max(0, Math.round(((color >>> 16) & 255) * amount)));
+        int g = Math.min(255, Math.max(0, Math.round(((color >>> 8) & 255) * amount)));
+        int b = Math.min(255, Math.max(0, Math.round((color & 255) * amount)));
+        return (r << 16) | (g << 8) | b;
     }
 
     private static void quad(VertexConsumer vertices, MatrixStack matrices,
