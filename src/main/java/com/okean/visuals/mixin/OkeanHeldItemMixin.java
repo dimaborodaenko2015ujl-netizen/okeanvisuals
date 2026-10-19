@@ -2,30 +2,20 @@ package com.okean.visuals.mixin;
 
 import com.okean.visuals.OkeanVisuals;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.item.HeldItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.RotationAxis;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/** Transform first-person hands/items, not the world. Free effect: Glow only. */
+/** Hand position, size and motion; Free does not apply hand shaders or lighting. */
 @Mixin(HeldItemRenderer.class)
 public abstract class OkeanHeldItemMixin {
-    private static final String ITEM_RENDER =
-            "renderItem(Lnet/minecraft/entity/LivingEntity;Lnet/minecraft/item/ItemStack;"
-            + "Lnet/minecraft/item/ModelTransformationMode;Z"
-            + "Lnet/minecraft/client/util/math/MatrixStack;"
-            + "Lnet/minecraft/client/render/VertexConsumerProvider;I)V";
-
     // Apply to the parent first-person render matrix, before Vanilla pushes its own.
     // This reliably moves the actual first-person hand as well as its held item.
     @Inject(method = "renderFirstPersonItem", at = @At("HEAD"))
@@ -58,11 +48,4 @@ public abstract class OkeanHeldItemMixin {
         matrices.pop();
     }
 
-    // Full-bright lighting is the only Free item effect; no global world shaders.
-    @ModifyVariable(method = ITEM_RENDER, at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private int okean$glowHeldItem(int light) {
-        return OkeanVisuals.itemEffect == 1
-                ? LightmapTextureManager.MAX_LIGHT_COORDINATE
-                : light;
-    }
 }
