@@ -2,7 +2,7 @@ plugins {
     id 'fabric-loom' version '1.8.11'
 }
 
-version = '1.0.0'
+version = '1.4.5-free-rc1'
 group = 'com.okean.visuals'
 
 repositories {
@@ -33,7 +33,17 @@ tasks.register('verifyModJar') {
         def zip = new java.util.zip.ZipFile(jarFile)
         try {
             ['fabric.mod.json', 'com/okean/visuals/OkeanVisuals.class',
-             'com/okean/visuals/OkeanVisuals$OkeanMenu.class'].each { entry ->
+             'com/okean/visuals/OkeanVisuals$OkeanMenu.class',
+             'com/okean/visuals/OkeanHud.class',
+             'com/okean/visuals/OkeanButton.class',
+             'com/okean/visuals/OkeanHud$VisualSettingsScreen.class',
+             'com/okean/visuals/OkeanHud$VisualTimeScreen.class',
+             'com/okean/visuals/OkeanHud$VisualTimeSlider.class',
+             'com/okean/visuals/OkeanHud$HudMoveScreen.class',
+             'com/okean/visuals/mixin/OkeanMouseMixin.class',
+             'com/okean/visuals/mixin/OkeanHeldItemMixin.class',
+             'com/okean/visuals/mixin/OkeanVisualTimeMixin.class',
+             'okeanvisuals.mixins.json'].each { entry ->
                 if (zip.getEntry(entry) == null) {
                     throw new GradleException("Missing mod entry: " + entry)
                 }
