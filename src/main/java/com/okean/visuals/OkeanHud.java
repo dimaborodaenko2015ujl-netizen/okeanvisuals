@@ -137,7 +137,9 @@ public final class OkeanHud {
             addDrawableChild(ButtonWidget.builder(Text.literal(text), b -> {
                 action.run();
                 OkeanVisuals.OkeanMenu.saveSettings();
-                clearAndInit();
+                if (MinecraftClient.getInstance().currentScreen == this) {
+                    clearAndInit();
+                }
             }).dimensions(left + 25, top + yOffset, panelW - 50, 22).build());
         }
 
