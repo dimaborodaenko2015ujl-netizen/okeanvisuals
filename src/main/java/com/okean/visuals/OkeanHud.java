@@ -32,7 +32,7 @@ public final class OkeanHud {
     public static final int PANEL_WIDTH = 205;
 
     public static int panelHeight() {
-        return showWasd ? 185 : 136;
+        return showWasd ? 171 : 122;
     }
 
     public static void recordLeftClick() {
@@ -79,7 +79,7 @@ public final class OkeanHud {
         int accent = OkeanVisuals.OkeanMenu.accent();
         ctx.fill(0, 0, PANEL_WIDTH, h, 0xB40C1222);
         ctx.drawBorder(0, 0, PANEL_WIDTH, h, accent);
-        ctx.drawText(client.textRenderer, "OKEAN VISUALS 1.4", 9, 9, accent, true);
+        ctx.drawText(client.textRenderer, "OKEAN FREE 1.4.1", 9, 9, accent, true);
 
         int line = 27;
         String xyz = String.format(Locale.ROOT, "XYZ: %.1f / %.1f / %.1f",
@@ -103,11 +103,8 @@ public final class OkeanHud {
         ctx.drawText(client.textRenderer, "Fullbright: " + (OkeanVisuals.fullbright ? "ON" : "OFF"),
                 9, line, OkeanVisuals.fullbright ? 0xFF55EF7A : 0xFFFF7B7B, true);
         line += 14;
-        ctx.drawText(client.textRenderer, "Kill Aura: " + (OkeanVisuals.killAura ? "ON" : "OFF"),
-                9, line, OkeanVisuals.killAura ? 0xFF55EF7A : 0xFFFF7B7B, true);
-
         if (showWasd) {
-            int baseY = 145;
+            int baseY = 131;
             drawKey(ctx, client, 31, baseY, "W", client.options.forwardKey.isPressed());
             drawKey(ctx, client, 9, baseY + 19, "A", client.options.leftKey.isPressed());
             drawKey(ctx, client, 31, baseY + 19, "S", client.options.backKey.isPressed());
