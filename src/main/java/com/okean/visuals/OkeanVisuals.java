@@ -50,11 +50,10 @@ public class OkeanVisuals implements ClientModInitializer {
     private double storedGamma = 0.5;
     private boolean appliedNightVision = false;
     public static boolean showRings = true;
-    // First-person item-only appearance settings. No external shader downloads.
+    // First-person hand position and motion only; no shaders or item lighting effects.
     public static float itemX = 0.0f, itemY = 0.0f, itemZ = 0.0f;
     public static float itemScale = 1.0f;
     public static int handAnimation = 0; // 0=normal, 1=float, 2=sway
-    public static int itemEffect = 0; // Free: 0=normal, 1=glow
 
 
     @Override
@@ -380,13 +379,11 @@ public class OkeanVisuals implements ClientModInitializer {
                 itemZ = parseFloat(props, "itemZ", 0.0f, -1.0f, 1.0f);
                 itemScale = parseFloat(props, "itemScale", 1.0f, 0.5f, 2.0f);
                 handAnimation = parseInt(props, "handAnimation", 0, 2);
-                itemEffect = parseInt(props, "itemEffect", 0, 1);
                 OkeanHud.x = parseInt(props, "hudX", 10, 20000);
                 OkeanHud.y = parseInt(props, "hudY", 10, 20000);
                 OkeanHud.scale = parseFloat(props, "hudScale", 1.0f, 0.75f, 1.75f);
                 OkeanHud.showWasd = Boolean.parseBoolean(props.getProperty("wasd", "true"));
                 OkeanHud.plusCrosshair = Boolean.parseBoolean(props.getProperty("crosshair", "false"));
-                OkeanHud.skyStyle = parseInt(props, "skyStyle", 0, 1);
                 hudEnabled = Boolean.parseBoolean(props.getProperty("hudEnabled", "true"));
                 showRings = Boolean.parseBoolean(props.getProperty("showRings", "true"));
                 autoSprint = Boolean.parseBoolean(props.getProperty("autoSprint", "false"));
@@ -416,13 +413,11 @@ public class OkeanVisuals implements ClientModInitializer {
             props.setProperty("itemZ", Float.toString(itemZ));
             props.setProperty("itemScale", Float.toString(itemScale));
             props.setProperty("handAnimation", Integer.toString(handAnimation));
-            props.setProperty("itemEffect", Integer.toString(itemEffect));
             props.setProperty("hudX", Integer.toString(OkeanHud.x));
             props.setProperty("hudY", Integer.toString(OkeanHud.y));
             props.setProperty("hudScale", Float.toString(OkeanHud.scale));
             props.setProperty("wasd", Boolean.toString(OkeanHud.showWasd));
             props.setProperty("crosshair", Boolean.toString(OkeanHud.plusCrosshair));
-            props.setProperty("skyStyle", Integer.toString(OkeanHud.skyStyle));
             props.setProperty("hudEnabled", Boolean.toString(hudEnabled));
             props.setProperty("showRings", Boolean.toString(showRings));
             props.setProperty("autoSprint", Boolean.toString(autoSprint));
@@ -537,7 +532,7 @@ public class OkeanVisuals implements ClientModInitializer {
                             MinecraftClient client = MinecraftClient.getInstance();
                             client.setScreen(new ControlsOptionsScreen(this, client.options));
                         });
-                addAction(tr("HUD и небо", "HUD and sky", "HUD і небо"),
+                addAction(tr("Настройки HUD", "HUD settings", "Налаштування HUD"),
                         rowX, rowY + 4 * rowGap, rowW, 22, b -> {
                             MinecraftClient.getInstance().setScreen(
                                     new OkeanHud.VisualSettingsScreen(this));
@@ -587,17 +582,17 @@ public class OkeanVisuals implements ClientModInitializer {
                 ctx.drawText(textRenderer, tr("Главная страница Okean Visuals",
                         "Okean Visuals main page", "Головна сторінка Okean Visuals"),
                         tx, ty, accent(), true);
-                ctx.drawText(textRenderer, tr("Версия: 1.4.3 Free Test",
-                        "Version: 1.4.3 Free Test", "Версія: 1.4.3 Free Test"),
+                ctx.drawText(textRenderer, tr("Версия: 1.4.4 Free RC",
+                        "Version: 1.4.4 Free RC", "Версія: 1.4.4 Free RC"),
                         tx, ty + 24, 0xFFFFFFFF, true);
-                ctx.drawText(textRenderer, tr("Новости: новые кнопки и эффекты Free",
-                        "News: themed UI, Free item effect", "Новини: нові кнопки й ефект Free"),
+                ctx.drawText(textRenderer, tr("Free: HUD, темы и настройки рук",
+                        "Free: HUD, themes and hand controls", "Free: HUD, теми й налаштування рук"),
                         tx, ty + 46, 0xFFB8D6EB, true);
                 ctx.drawText(textRenderer, tr("Помощь: Right Shift — открыть меню",
                         "Help: Right Shift — open menu", "Допомога: Right Shift — відкрити меню"),
                         tx, ty + 68, 0xFFB8D6EB, true);
-                ctx.drawText(textRenderer, tr("Free: основная версия в разработке",
-                        "Free: preparing the base version", "Free: готуємо базову версію"),
+                ctx.drawText(textRenderer, tr("Free: кандидат на выпуск",
+                        "Free: release candidate", "Free: кандидат на випуск"),
                         tx, ty + 90, 0xFFB8D6EB, true);
             } else if (tab == Tab.SETTINGS) {
                 ctx.drawText(textRenderer, tr("Нажми на кнопку, чтобы сменить настройку",
@@ -642,7 +637,7 @@ public class OkeanVisuals implements ClientModInitializer {
         @Override
         protected void init() {
             w = Math.min(360, width - 24);
-            h = Math.min(280, height - 20);
+            h = Math.min(250, height - 20);
             x = (width - w) / 2;
             y = (height - h) / 2;
             step(0, "X", () -> itemX = clamp(itemX - 0.05f, -1, 1),
@@ -655,12 +650,10 @@ public class OkeanVisuals implements ClientModInitializer {
                     () -> itemScale = clamp(itemScale + 0.05f, 0.5f, 2.0f));
             step(4, "Animation", () -> handAnimation = (handAnimation + 2) % 3,
                     () -> handAnimation = (handAnimation + 1) % 3);
-            step(5, "Free Glow", () -> itemEffect = 1 - itemEffect,
-                    () -> itemEffect = 1 - itemEffect);
             button(OkeanMenu.tr("Сбросить", "Reset", "Скинути"),
                     x + 20, y + h - 33, 104, () -> {
                         itemX = 0; itemY = 0; itemZ = 0;
-                        itemScale = 1; handAnimation = 0; itemEffect = 0;
+                        itemScale = 1; handAnimation = 0;
                     });
             addDrawableChild(OkeanButton.of(OkeanMenu.tr("Готово", "Done", "Готово"),
                     x + w - 128, y + h - 33, 104, 20, b -> close()));
@@ -690,8 +683,7 @@ public class OkeanVisuals implements ClientModInitializer {
                 String.format(java.util.Locale.ROOT, "Z: %.2f", itemZ),
                 String.format(java.util.Locale.ROOT, "Size: %.2f", itemScale),
                 "Motion: " + switch (handAnimation) {
-                    case 1 -> "Float"; case 2 -> "Sway"; default -> "Normal"; },
-                "Free effect: " + (itemEffect == 1 ? "Glow" : "Normal")
+                    case 1 -> "Float"; case 2 -> "Sway"; default -> "Normal"; }
             };
             for (int i = 0; i < rows.length; i++) {
                 ctx.drawText(textRenderer, rows[i], x + 16, y + 45 + i * 27,
