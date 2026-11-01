@@ -12,6 +12,7 @@ import net.minecraft.text.Text;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
+import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
@@ -91,7 +92,7 @@ public class OkeanClient implements ClientModInitializer {
   saveConfig();
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box","Item Radar","Mob Radar","Player Radar"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box","Item Radar","Mob Radar","Player Radar","AutoClicker","AutoRespawn","NameTags","ItemESP"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
   MODULES.put("Item HUD",true);
@@ -126,7 +127,15 @@ public class OkeanClient implements ClientModInitializer {
      client.interactionManager.clickSlot(sync,screenSlot,0,SlotActionType.PICKUP,client.player);
     }
    }
+   if(on("AutoRespawn")&&client.player!=null&&!client.player.isAlive()&&ticks%20==0){
+    client.player.requestRespawn();
+   }
    if(client.player!=null&&client.world!=null&&client.currentScreen==null){
+    if(on("AutoClicker")&&client.interactionManager!=null&&client.options.attackKey.isPressed()&&ticks%4==0
+      &&client.crosshairTarget instanceof EntityHitResult hit&&hit.getEntity()!=client.player){
+      client.interactionManager.attackEntity(client.player,hit.getEntity());
+      client.player.swingHand(Hand.MAIN_HAND);
+    }
     if(on("Jump Assist")&&client.options.forwardKey.isPressed()&&client.player.isOnGround())client.player.jump();
     if(on("KillAura")&&client.interactionManager!=null&&ticks-lastAttackTick>=12
       &&client.player.getAttackCooldownProgress(0.0f)>=0.95f){
@@ -186,14 +195,16 @@ public class OkeanClient implements ClientModInitializer {
    rounded(ctx,x,8,x+128,36,0xDA101C2B);
    ctx.drawText(mc.textRenderer,"XYZ "+mc.player.getBlockX()+", "+mc.player.getBlockY()+", "+mc.player.getBlockZ(),x+6,18,accent(),true);
   }
-  if(on("Item Radar")||on("Mob Radar")||on("Player Radar")){
+  if(on("Item Radar")||on("Mob Radar")||on("Player Radar")||on("NameTags")||on("ItemESP")){
    int items=0,mobs=0,players=0;
+   int drawnItems=0,drawnMobs=0;
    String nearestItem="";
    double nearestSq=256;
    for(Entity e:mc.world.getEntities()){
     if(e==mc.player || mc.player.squaredDistanceTo(e)>256)continue;
     if(e instanceof ItemEntity item){
      items++;
+     if(on("ItemESP")&&drawnItems<5){drawnItems++;}
      double sq=mc.player.squaredDistanceTo(e);
      if(sq<nearestSq){nearestSq=sq;nearestItem=item.getStack().getName().getString();}
     }else if(e instanceof PlayerEntity){players++;}
@@ -202,6 +213,8 @@ public class OkeanClient implements ClientModInitializer {
    if(on("Item Radar"))y=line(ctx,"Nearby items: "+items+(nearestItem.isBlank()?"":" | "+nearestItem),y);
    if(on("Mob Radar"))y=line(ctx,"Nearby mobs: "+mobs,y);
    if(on("Player Radar"))y=line(ctx,"Nearby players: "+players,y);
+   if(on("ItemESP"))y=line(ctx,"ItemESP nearby: "+items+" | "+(nearestItem.isBlank()?"none":nearestItem),y);
+   if(on("NameTags"))y=line(ctx,"NameTags nearby: "+players+" players / "+mobs+" mobs",y);
   }
   if(on("Session HUD"))y=line(ctx,"Session ticks: "+ticks,y);
   if(on("Crosshair Info"))y=line(ctx,"Look: "+mc.player.getHorizontalFacing().asString(),y);
