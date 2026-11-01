@@ -64,6 +64,7 @@ public class ModuleScreen extends Screen {
    }
   }
   rounded(c,x0,y+260,maxWidth,37,0xD8122336);
+  c.drawText(textRenderer,"HUD SIZE: "+OkeanClient.hudScale+"%   [-] [+]",x0+maxWidth-183,y+273,OkeanClient.accent(),true);
   c.drawText(textRenderer,"LMB: toggle   RMB: theme / setting   Wheel: scroll HUD",x0+14,y+273,0xFFB9C8D6,false);
   super.render(c,mx,my,d);
  }
@@ -96,6 +97,7 @@ public class ModuleScreen extends Screen {
    if(name.equals("KillAura")){OkeanClient.killAuraRange+=0.25;if(OkeanClient.killAuraRange>3.25)OkeanClient.killAuraRange=2.5;}
    else if(name.equals("AutoTotem")){OkeanClient.autoTotemHealth+=2;if(OkeanClient.autoTotemHealth>20)OkeanClient.autoTotemHealth=8;}
    else OkeanClient.hudTheme=(OkeanClient.hudTheme+1)%OkeanClient.HUD_COLORS.length;
+   OkeanClient.saveConfig();
   }
  }
  @Override public boolean mouseScrolled(double mx,double my,double horizontal,double vertical){
