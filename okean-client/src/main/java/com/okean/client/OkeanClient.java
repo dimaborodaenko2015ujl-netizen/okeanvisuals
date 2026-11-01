@@ -22,11 +22,9 @@ public class OkeanClient implements ClientModInitializer {
  public static boolean on(String name){return MODULES.getOrDefault(name,false);}
  public static void toggle(String name){
   MODULES.computeIfPresent(name,(k,v)->!v);
-  if(on("Day Mode")&&name.equals("Day Mode"))MODULES.put("Night Mode",false);
-  if(on("Night Mode")&&name.equals("Night Mode"))MODULES.put("Day Mode",false);
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Day Mode","Night Mode","Fullbright"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   menuKey=KeyBindingHelper.registerKeyBinding(new KeyBinding("Okean Client Menu",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"Okean Client"));
   ClientTickEvents.END_CLIENT_TICK.register(client->{
@@ -36,10 +34,6 @@ public class OkeanClient implements ClientModInitializer {
    }
    if(client.currentScreen instanceof TitleScreen)client.setScreen(new HomeScreen());
    if(client.player!=null&&on("AutoSprint")&&client.options.forwardKey.isPressed()&&!client.player.isSneaking())client.player.setSprinting(true);
-   if(client.world!=null){
-    if(on("Day Mode"))client.world.setTimeOfDay(6000L);
-    else if(on("Night Mode"))client.world.setTimeOfDay(18000L);
-   }
    if(client.player!=null){
     if(on("Fullbright")){
      client.player.addStatusEffect(new StatusEffectInstance(StatusEffects.NIGHT_VISION,260,0,false,false,false));
