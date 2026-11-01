@@ -4,7 +4,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 public class ModuleScreen extends Screen {
  private final Screen previous;
- private final String[][] groups={{"COMBAT","KillAura","Target HUD","Health HUD"},{"MOVEMENT","AutoSprint","Jump Assist","Direction"},{"VISUALS","FPS HUD","XYZ HUD","Biome","Fullbright"},{"PLAYER","Clock","Speed HUD","Ping HUD","Durability HUD"},{"MISC","Watermark","Clean HUD"}};
+ private final String[][] groups={{"COMBAT","KillAura","Target HUD","Health HUD"},{"MOVEMENT","AutoSprint","Jump Assist","Direction"},{"VISUALS","FPS HUD","XYZ HUD","Biome","Fullbright","Item HUD","Armor HUD","Crosshair Info"},{"PLAYER","Clock","Speed HUD","Ping HUD","Durability HUD","Session HUD","CPS HUD"},{"MISC","Watermark","Clean HUD","Hotbar HUD","Module List","Watermark Accent"}};
  public ModuleScreen(Screen previous){super(Text.literal("Okean Modules"));this.previous=previous;}
  @Override public void renderBackground(DrawContext ctx,int mx,int my,float delta){}
  private int cardX(int i){return 12+i*Math.max(105,(width-24)/5);}
@@ -12,7 +12,7 @@ public class ModuleScreen extends Screen {
  @Override public void render(DrawContext ctx,int mx,int my,float delta){
   ctx.fill(0,0,width,height,0xD909111C);
   ctx.drawCenteredTextWithShadow(textRenderer,"O K E A N / MODULES",width/2,15,OkeanClient.CYAN);
-  ctx.drawCenteredTextWithShadow(textRenderer,"Right Shift = close",width/2,30,0xFF96A7B6);
+  ctx.drawCenteredTextWithShadow(textRenderer,"LMB toggle | RMB accent color | Right Shift close",width/2,30,0xFF96A7B6);
   for(int i=0;i<groups.length;i++){
    int x=cardX(i),w=cardWidth(),y=58;
    ctx.fill(x,y,x+w,Math.min(height-17,58+34+groups[i].length*28),0xEF102030);
@@ -28,11 +28,11 @@ public class ModuleScreen extends Screen {
   super.render(ctx,mx,my,delta);
  }
  @Override public boolean mouseClicked(double mx,double my,int button){
-  if(button==0)for(int i=0;i<groups.length;i++){
+  if(button==0||button==1)for(int i=0;i<groups.length;i++){
    int x=cardX(i),w=cardWidth();
    for(int j=1;j<groups[i].length;j++){
     int y=88+(j-1)*28;
-    if(mx>=x&&mx<x+w&&my>=y&&my<y+23){OkeanClient.toggle(groups[i][j]);return true;}
+    if(mx>=x&&mx<x+w&&my>=y&&my<y+23){if(button==0)OkeanClient.toggle(groups[i][j]);else OkeanClient.hudColor=(OkeanClient.hudColor+1)%OkeanClient.HUD_COLORS.length;return true;}
    }
   }
   return super.mouseClicked(mx,my,button);
