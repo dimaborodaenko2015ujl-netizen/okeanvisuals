@@ -47,6 +47,7 @@ public class OkeanClient implements ClientModInitializer {
  public static int hudColor=0;
  public static int watermarkX=8,watermarkY=7;
  public static int targetX=12,targetY=120;
+ public static int textX=9,textY=42;
  public static boolean compactHud=false;
  public static int hudScale=100;
  private static Path configPath(){return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("okean-client.properties");}
@@ -57,6 +58,7 @@ public class OkeanClient implements ClientModInitializer {
   p.setProperty("hudScale",Integer.toString(hudScale));
   p.setProperty("watermarkX",Integer.toString(watermarkX));p.setProperty("watermarkY",Integer.toString(watermarkY));
   p.setProperty("targetX",Integer.toString(targetX));p.setProperty("targetY",Integer.toString(targetY));
+  p.setProperty("textX",Integer.toString(textX));p.setProperty("textY",Integer.toString(textY));
   p.setProperty("totemHealth",Float.toString(autoTotemHealth));
   try(var out=Files.newOutputStream(configPath())){p.store(out,"Okean Client config");}
   catch(Exception ex){System.err.println("[Okean] Save failed: "+ex.getMessage());}
@@ -71,6 +73,7 @@ public class OkeanClient implements ClientModInitializer {
    hudScale=Math.max(50,Math.min(200,Integer.parseInt(p.getProperty("hudScale","100"))));
    watermarkX=Integer.parseInt(p.getProperty("watermarkX","8"));watermarkY=Integer.parseInt(p.getProperty("watermarkY","7"));
    targetX=Integer.parseInt(p.getProperty("targetX","12"));targetY=Integer.parseInt(p.getProperty("targetY","120"));
+   textX=Integer.parseInt(p.getProperty("textX","9"));textY=Integer.parseInt(p.getProperty("textY","42"));
    autoTotemHealth=Float.parseFloat(p.getProperty("totemHealth","14"));
   }catch(Exception ex){System.err.println("[Okean] Load failed: "+ex.getMessage());}
  }
@@ -95,8 +98,9 @@ public class OkeanClient implements ClientModInitializer {
   for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box","Mob Radar","Player Radar","AutoClicker","AutoRespawn","NameTags","ItemESP","MobESP"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
-  MODULES.put("Item HUD",true);
+  MODULES.put("Item HUD",false);
   loadConfig();
+  for(String obsolete:new String[]{"Item Radar"})MODULES.remove(obsolete);
   menuKey=KeyBindingHelper.registerKeyBinding(new KeyBinding("Okean Client Menu",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"Okean Client"));
   ClientTickEvents.END_CLIENT_TICK.register(client->{
    ticks++;
@@ -174,7 +178,7 @@ public class OkeanClient implements ClientModInitializer {
  private static void renderHud(DrawContext ctx){
   MinecraftClient mc=MinecraftClient.getInstance();
   if(mc.player==null||mc.world==null||mc.options.hudHidden)return;
-  int y=on("Watermark")?Math.max(30,watermarkY+29):8;
+  int y=textY;
   if(on("Watermark")){
    int ping=0;
    if(mc.getNetworkHandler()!=null){
@@ -283,8 +287,8 @@ public class OkeanClient implements ClientModInitializer {
  }
  private static int line(DrawContext ctx,String str,int y){
   MinecraftClient mc=MinecraftClient.getInstance();
-  if(!on("Clean HUD"))ctx.fill(6,y-3,12+mc.textRenderer.getWidth(str),y+12,0xA30A1722);
-  ctx.drawText(mc.textRenderer,Text.literal(str),9,y,accent(),true);
+  if(!on("Clean HUD"))rounded(ctx,textX-3,y-3,textX+3+mc.textRenderer.getWidth(str),y+12,0xA30A1722);
+  ctx.drawText(mc.textRenderer,Text.literal(str),textX,y,accent(),true);
   return y+17;
  }
 }
