@@ -12,6 +12,9 @@ import net.minecraft.text.Text;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.item.Items;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Item;
 import net.minecraft.util.Hand;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
@@ -25,6 +28,9 @@ public class OkeanClient implements ClientModInitializer {
  private static boolean nightVisionApplied=false;
  private static long lastAttackTick=-100;
  private static long ticks=0;
+ public static int hudColor=0;
+ public static boolean compactHud=false;
+ public static final int[] HUD_COLORS={0xFF42CCFF,0xFFBA85FF,0xFF71E7A1,0xFFFFC069,0xFFFF728B};
  private static LivingEntity closestTarget(MinecraftClient client){
   if(client.player==null||client.world==null)return null;
   LivingEntity best=null;
@@ -41,9 +47,10 @@ public class OkeanClient implements ClientModInitializer {
   MODULES.computeIfPresent(name,(k,v)->!v);
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
+  MODULES.put("Item HUD",true);
   menuKey=KeyBindingHelper.registerKeyBinding(new KeyBinding("Okean Client Menu",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"Okean Client"));
   ClientTickEvents.END_CLIENT_TICK.register(client->{
    ticks++;
@@ -90,9 +97,27 @@ public class OkeanClient implements ClientModInitializer {
    String label="Okean Client  /  "+ping+" ms  /  "+mc.getCurrentFps()+" FPS";
    int w=mc.textRenderer.getWidth(label)+42;
    ctx.fill(7,5,w,25,0xE20B1220);
-   ctx.fill(7,5,10,25,0xFF6B50E9);
+   ctx.fill(7,5,10,25,on("Watermark Accent")?HUD_COLORS[hudColor]:0xFF6B50E9);
    ctx.drawText(mc.textRenderer,Text.literal("O"),16,11,0xFFB39CFF,true);
    ctx.drawText(mc.textRenderer,Text.literal(label),31,11,0xFFFFFFFF,true);
+  }
+  if(on("Session HUD"))y=line(ctx,"Session ticks: "+ticks,y);
+  if(on("Crosshair Info"))y=line(ctx,"Look: "+mc.player.getHorizontalFacing().asString(),y);
+  if(on("CPS HUD"))y=line(ctx,"Attack cooldown: "+(int)(mc.player.getAttackCooldownProgress(0)*100)+"%",y);
+  if(on("Armor HUD")) {
+   int armorPieces=0;
+   for(ItemStack stack:mc.player.getInventory().armor)if(!stack.isEmpty())armorPieces++;
+   y=line(ctx,"Armor pieces: "+armorPieces+"/4",y);
+  }
+  if(on("Hotbar HUD"))y=line(ctx,"Selected slot: "+(mc.player.getInventory().selectedSlot+1),y);
+  if(on("Item HUD")) {
+   y=line(ctx,"Totems: "+count(mc,Items.TOTEM_OF_UNDYING)+" | Pearls: "+count(mc,Items.ENDER_PEARL),y);
+   y=line(ctx,"Golden apples: "+count(mc,Items.GOLDEN_APPLE),y);
+  }
+  if(on("Module List")){
+   int active=0;
+   for(Boolean state:MODULES.values())if(state)active++;
+   y=line(ctx,"Modules enabled: "+active,y);
   }
   if(on("FPS HUD"))y=line(ctx,"Okean | FPS "+mc.getCurrentFps(),y);
   if(on("XYZ HUD"))y=line(ctx,String.format("XYZ: %.0f / %.0f / %.0f",mc.player.getX(),mc.player.getY(),mc.player.getZ()),y);
@@ -114,10 +139,16 @@ public class OkeanClient implements ClientModInitializer {
    if(entry!=null)y=line(ctx,"Ping: "+entry.getLatency()+" ms",y);
   }
  }
+ private static int count(MinecraftClient mc, Item item){
+  int n=0;
+  for(ItemStack stack:mc.player.getInventory().main)if(stack.isOf(item))n+=stack.getCount();
+  if(mc.player.getOffHandStack().isOf(item))n+=mc.player.getOffHandStack().getCount();
+  return n;
+ }
  private static int line(DrawContext ctx,String str,int y){
   MinecraftClient mc=MinecraftClient.getInstance();
   if(!on("Clean HUD"))ctx.fill(6,y-3,12+mc.textRenderer.getWidth(str),y+12,0xA30A1722);
-  ctx.drawText(mc.textRenderer,Text.literal(str),9,y,CYAN,true);
+  ctx.drawText(mc.textRenderer,Text.literal(str),9,y,HUD_COLORS[hudColor],true);
   return y+17;
  }
 }
