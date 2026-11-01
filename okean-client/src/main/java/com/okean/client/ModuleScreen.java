@@ -7,10 +7,10 @@ public class ModuleScreen extends Screen {
  private final Screen previous;
  private int page=0,scroll=0;
  private final String[][] groups={
-  {"COMBAT","KillAura","Target HUD"},
+  {"COMBAT","KillAura","AutoClicker","Target HUD"},
   {"MOVEMENT","AutoSprint","Jump Assist","GUI Move"},
-  {"VISUALS","Fullbright","Item Radar","Mob Radar","Player Radar","Center Dot","Health Bar","Coordinates Box"},
-  {"PLAYER","AutoTotem","Armor HUD","Health HUD"},
+  {"VISUALS","Fullbright","ItemESP","NameTags","Item Radar","Mob Radar","Player Radar","Center Dot"},
+  {"PLAYER","AutoTotem","AutoRespawn","Armor HUD","Health HUD"},
   {"MISC","Watermark","Clock","Module List"}
  };
  private final String[] hud={"Watermark","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Speed HUD","Ping HUD","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Durability HUD","Target HUD","Clean HUD"};
