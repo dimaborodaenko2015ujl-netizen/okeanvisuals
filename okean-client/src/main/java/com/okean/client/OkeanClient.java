@@ -25,6 +25,9 @@ import net.minecraft.entity.effect.StatusEffects;
 import org.lwjgl.glfw.GLFW;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Properties;
 public class OkeanClient implements ClientModInitializer {
  public static final int CYAN=0xFF42CCFF;
  public static final Map<String,Boolean> MODULES=new LinkedHashMap<>();
@@ -42,6 +45,32 @@ public class OkeanClient implements ClientModInitializer {
  public static int watermarkX=8,watermarkY=7;
  public static int targetX=12,targetY=120;
  public static boolean compactHud=false;
+ public static int hudScale=100;
+ private static Path configPath(){return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir().resolve("okean-client.properties");}
+ public static void saveConfig(){
+  Properties p=new Properties();
+  for(var e:MODULES.entrySet())p.setProperty("module."+e.getKey(),Boolean.toString(e.getValue()));
+  p.setProperty("theme",Integer.toString(hudTheme));
+  p.setProperty("hudScale",Integer.toString(hudScale));
+  p.setProperty("watermarkX",Integer.toString(watermarkX));p.setProperty("watermarkY",Integer.toString(watermarkY));
+  p.setProperty("targetX",Integer.toString(targetX));p.setProperty("targetY",Integer.toString(targetY));
+  p.setProperty("totemHealth",Float.toString(autoTotemHealth));
+  try(var out=Files.newOutputStream(configPath())){p.store(out,"Okean Client config");}
+  catch(Exception ex){System.err.println("[Okean] Save failed: "+ex.getMessage());}
+ }
+ private static void loadConfig(){
+  Path path=configPath();if(!Files.isRegularFile(path))return;
+  Properties p=new Properties();
+  try(var in=Files.newInputStream(path)){
+   p.load(in);
+   for(String name:MODULES.keySet())if(p.containsKey("module."+name))MODULES.put(name,Boolean.parseBoolean(p.getProperty("module."+name)));
+   hudTheme=Math.floorMod(Integer.parseInt(p.getProperty("theme","0")),HUD_COLORS.length);
+   hudScale=Math.max(50,Math.min(200,Integer.parseInt(p.getProperty("hudScale","100"))));
+   watermarkX=Integer.parseInt(p.getProperty("watermarkX","8"));watermarkY=Integer.parseInt(p.getProperty("watermarkY","7"));
+   targetX=Integer.parseInt(p.getProperty("targetX","12"));targetY=Integer.parseInt(p.getProperty("targetY","120"));
+   autoTotemHealth=Float.parseFloat(p.getProperty("totemHealth","14"));
+  }catch(Exception ex){System.err.println("[Okean] Load failed: "+ex.getMessage());}
+ }
  public static final int[] HUD_COLORS={0xFF42CCFF,0xFFBA85FF,0xFF71E7A1,0xFFFFC069,0xFFFF728B};
  private static LivingEntity closestTarget(MinecraftClient client){
   if(client.player==null||client.world==null)return null;
@@ -57,12 +86,14 @@ public class OkeanClient implements ClientModInitializer {
  public static boolean on(String name){return MODULES.getOrDefault(name,false);}
  public static void toggle(String name){
   MODULES.computeIfPresent(name,(k,v)->!v);
+  saveConfig();
  }
  @Override public void onInitializeClient(){
   for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
   MODULES.put("Item HUD",true);
+  loadConfig();
   menuKey=KeyBindingHelper.registerKeyBinding(new KeyBinding("Okean Client Menu",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"Okean Client"));
   ClientTickEvents.END_CLIENT_TICK.register(client->{
    ticks++;
@@ -128,11 +159,15 @@ public class OkeanClient implements ClientModInitializer {
     if(entry!=null)ping=entry.getLatency();
    }
    String label="Okean Client  /  "+ping+" ms  /  "+mc.getCurrentFps()+" FPS";
+   // HUD scale is a size setting, independent of color themes.
+   ctx.getMatrices().push();
+   ctx.getMatrices().scale(hudScale/100f,hudScale/100f,1f);
    int w=mc.textRenderer.getWidth(label)+42;
    rounded(ctx,watermarkX,watermarkY,watermarkX+w,watermarkY+20,0xE20B1220);
    ctx.fill(watermarkX,watermarkY+3,watermarkX+3,watermarkY+17,accent());
    ctx.drawText(mc.textRenderer,Text.literal("O"),watermarkX+10,watermarkY+6,0xFFB39CFF,true);
    ctx.drawText(mc.textRenderer,Text.literal(label),watermarkX+25,watermarkY+6,0xFFFFFFFF,true);
+   ctx.getMatrices().pop();
   }
   if(on("Center Dot")){
    int cx=ctx.getScaledWindowWidth()/2,cy=ctx.getScaledWindowHeight()/2;
