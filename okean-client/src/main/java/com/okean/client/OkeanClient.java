@@ -14,6 +14,10 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Items;
 import net.minecraft.item.ItemStack;
+import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.gui.screen.ChatScreen;
+import net.minecraft.item.Items;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
 import net.minecraft.util.Hand;
 import net.minecraft.entity.effect.StatusEffectInstance;
@@ -28,13 +32,19 @@ public class OkeanClient implements ClientModInitializer {
  private static boolean nightVisionApplied=false;
  private static long lastAttackTick=-100;
  private static long ticks=0;
+ public static double killAuraRange=3.25;
+ public static float autoTotemHealth=14f;
+ public static String[] HUD_THEME_NAMES={"Cyan","Purple","Mint","Sunset","Pink"};
+ public static int hudTheme=0;
+ public static int accent(){return HUD_COLORS[hudTheme%HUD_COLORS.length];}
+ public static String themeName(){return HUD_THEME_NAMES[hudTheme%HUD_THEME_NAMES.length];}
  public static int hudColor=0;
  public static boolean compactHud=false;
  public static final int[] HUD_COLORS={0xFF42CCFF,0xFFBA85FF,0xFF71E7A1,0xFFFFC069,0xFFFF728B};
  private static LivingEntity closestTarget(MinecraftClient client){
   if(client.player==null||client.world==null)return null;
   LivingEntity best=null;
-  double distance=3.25*3.25;
+  double distance=killAuraRange*killAuraRange;
   for(Entity entity:client.world.getEntities()){
    if(entity==client.player||!(entity instanceof LivingEntity living)||!living.isAlive()||living.isSpectator())continue;
    double d=client.player.squaredDistanceTo(living);
@@ -47,7 +57,7 @@ public class OkeanClient implements ClientModInitializer {
   MODULES.computeIfPresent(name,(k,v)->!v);
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
   MODULES.put("Item HUD",true);
@@ -60,6 +70,25 @@ public class OkeanClient implements ClientModInitializer {
    }
    if(client.currentScreen instanceof TitleScreen)client.setScreen(new HomeScreen());
    if(client.player!=null&&on("AutoSprint")&&client.options.forwardKey.isPressed()&&!client.player.isSneaking())client.player.setSprinting(true);
+   if(on("GUI Move")&&client.currentScreen!=null&&!(client.currentScreen instanceof ChatScreen)&&client.player!=null){
+    long handle=client.getWindow().getHandle();
+    var keys=new net.minecraft.client.option.KeyBinding[]{client.options.forwardKey,client.options.backKey,client.options.leftKey,client.options.rightKey,client.options.jumpKey};
+    for(var key:keys)if(key.getBoundKey().getCategory()==InputUtil.Type.KEYSYM)
+     key.setPressed(InputUtil.isKeyPressed(handle,key.getBoundKey().getCode()));
+   }
+   if(on("AutoTotem")&&client.player!=null&&client.currentScreen==null&&client.interactionManager!=null
+       &&client.player.getHealth()<=autoTotemHealth&&!client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)){
+    int slot=-1;
+    for(int i=0;i<client.player.getInventory().main.size();i++)
+     if(client.player.getInventory().main.get(i).isOf(Items.TOTEM_OF_UNDYING)){slot=i;break;}
+    if(slot>=0){
+     int screenSlot=slot<9?36+slot:slot;
+     int sync=client.player.currentScreenHandler.syncId;
+     client.interactionManager.clickSlot(sync,screenSlot,0,SlotActionType.PICKUP,client.player);
+     client.interactionManager.clickSlot(sync,45,0,SlotActionType.PICKUP,client.player);
+     client.interactionManager.clickSlot(sync,screenSlot,0,SlotActionType.PICKUP,client.player);
+    }
+   }
    if(client.player!=null&&client.world!=null&&client.currentScreen==null){
     if(on("Jump Assist")&&client.options.forwardKey.isPressed()&&client.player.isOnGround())client.player.jump();
     if(on("KillAura")&&client.interactionManager!=null&&ticks-lastAttackTick>=12
@@ -97,7 +126,7 @@ public class OkeanClient implements ClientModInitializer {
    String label="Okean Client  /  "+ping+" ms  /  "+mc.getCurrentFps()+" FPS";
    int w=mc.textRenderer.getWidth(label)+42;
    ctx.fill(7,5,w,25,0xE20B1220);
-   ctx.fill(7,5,10,25,on("Watermark Accent")?HUD_COLORS[hudColor]:0xFF6B50E9);
+   ctx.fill(7,5,10,25,on("Watermark Accent")?accent():0xFF6B50E9);
    ctx.drawText(mc.textRenderer,Text.literal("O"),16,11,0xFFB39CFF,true);
    ctx.drawText(mc.textRenderer,Text.literal(label),31,11,0xFFFFFFFF,true);
   }
