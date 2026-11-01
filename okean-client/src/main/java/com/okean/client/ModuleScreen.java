@@ -2,95 +2,105 @@ package com.okean.client;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+
 public class ModuleScreen extends Screen {
  private final Screen previous;
- private int tab=0,drag=0,dx=0,dy=0,scroll=0;
+ private int page=0,scroll=0;
+ private final String[][] groups={
+  {"COMBAT","KillAura","Target HUD"},
+  {"MOVEMENT","AutoSprint","Jump Assist","GUI Move"},
+  {"VISUALS","Fullbright","Center Dot","Health Bar","Coordinates Box"},
+  {"PLAYER","AutoTotem","Armor HUD","Health HUD"},
+  {"MISC","Watermark","Clock","Module List"}
+ };
  private final String[] hud={"Watermark","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Speed HUD","Ping HUD","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Durability HUD","Target HUD","Clean HUD"};
- private final String[] visual={"Fullbright","Center Dot","Health Bar","Coordinates Box"};
- private final String[] utility={"GUI Move","AutoSprint","Jump Assist","KillAura","AutoTotem"};
- public ModuleScreen(Screen prev){super(Text.literal("Okean Client"));previous=prev;}
- private int left(){return width/2-214;}
- private int top(){return height/2-151;}
- private void panel(DrawContext c,int x,int y,int w,int h,int col){
-  c.fill(x+4,y,x+w-4,y+h,col);c.fill(x,y+4,x+w,y+h-4,col);
+ public ModuleScreen(Screen prior){super(Text.literal("Okean Client"));previous=prior;}
+ private void rounded(DrawContext c,int x,int y,int w,int h,int color){
+  c.fill(x+5,y,x+w-5,y+h,color);c.fill(x,y+5,x+w,y+h-5,color);
+  c.fill(x+2,y+2,x+w-2,y+h-2,color);
  }
- private String[] current(){return tab==0?hud:tab==1?visual:utility;}
- @Override public void renderBackground(DrawContext c,int x,int y,float d){}
+ @Override public void renderBackground(DrawContext c,int mx,int my,float d){}
  @Override public void render(DrawContext c,int mx,int my,float d){
-  c.fill(0,0,width,height,0x7107111B);
-  int x=left(),y=top();
-  panel(c,x,y,428,302,0xF0162234);
-  panel(c,x+9,y+9,410,40,0xFF203349);
-  c.drawText(textRenderer,"O K E A N",x+20,y+25,0xFFFFFFFF,true);
-  c.drawText(textRenderer,"Theme: "+OkeanClient.themeName(),x+285,y+25,OkeanClient.accent(),true);
-  String[] tabs={"HUD","VISUALS","UTILITY"};
-  for(int i=0;i<3;i++){
-   int tx=x+16+i*136;
-   panel(c,tx,y+57,126,24,i==tab?0xFF245773:0xFF253143);
-   c.drawCenteredTextWithShadow(textRenderer,tabs[i],tx+63,y+65,i==tab?OkeanClient.accent():0xFFAABACB);
+  c.fill(0,0,width,height,0x85060D18);
+  int maxWidth=Math.min(width-24,1020),x0=(width-maxWidth)/2;
+  int headerY=Math.max(12,height/2-177);
+  rounded(c,x0,headerY,maxWidth,47,0xEA0B1827);
+  c.drawText(textRenderer,"O K E A N  C L I E N T",x0+16,headerY+11,0xFFFFFFFF,true);
+  c.drawText(textRenderer,"Fabric 1.21.4  |  "+OkeanClient.themeName(),x0+16,headerY+27,OkeanClient.accent(),false);
+  int hudButtonX=x0+maxWidth-96;
+  rounded(c,hudButtonX,headerY+10,80,25,page==1?0xFF277DA7:0xFF263B50);
+  c.drawCenteredTextWithShadow(textRenderer,page==1?"MODULES":"HUD",hudButtonX+40,headerY+18,0xFFFFFFFF);
+  int y=headerY+57;
+  if(page==0){
+   int gap=9,cardW=(maxWidth-4*gap)/5;
+   for(int i=0;i<5;i++){
+    int x=x0+i*(cardW+gap);
+    rounded(c,x,y,cardW,250,0xE41B2535);
+    c.fill(x+10,y+37,x+cardW-10,y+38,0xFF314355);
+    c.drawText(textRenderer,groups[i][0],x+12,y+13,OkeanClient.accent(),true);
+    for(int j=1;j<groups[i].length;j++){
+     int yy=y+45+(j-1)*29;
+     boolean enabled=OkeanClient.on(groups[i][j]);
+     rounded(c,x+7,yy,cardW-14,25,enabled?0xB52A4257:0x8F223142);
+     String s=groups[i][j];
+     if(s.length()>14)s=s.substring(0,14);
+     c.drawText(textRenderer,s,x+15,yy+8,0xFFE5EDF5,false);
+     rounded(c,x+cardW-35,yy+7,20,11,enabled?OkeanClient.accent():0xFF546276);
+    }
+   }
+  }else{
+   int columns=2,colW=(maxWidth-10)/2;
+   for(int col=0;col<columns;col++){
+    int xx=x0+col*(colW+10);
+    rounded(c,xx,y,colW,250,0xE41B2535);
+    for(int row=0;row<8;row++){
+     int index=scroll+col*8+row;
+     if(index>=hud.length)break;
+     int yy=y+9+row*29;
+     rounded(c,xx+8,yy,colW-16,25,0xB5233548);
+     c.drawText(textRenderer,hud[index],xx+18,yy+8,0xFFFFFFFF,false);
+     rounded(c,xx+colW-38,yy+7,21,11,OkeanClient.on(hud[index])?OkeanClient.accent():0xFF526378);
+    }
+   }
   }
-  String[] names=current();
-  int max=Math.min(names.length,8);
-  for(int j=0;j<max;j++){
-   int idx=j+scroll;if(idx>=names.length)break;
-   int yy=y+92+j*23;
-   panel(c,x+16,yy,396,20,0xFF1C2C3E);
-   String name=names[idx];
-   if(name.equals("KillAura"))name+=" ["+String.format("%.2f",OkeanClient.killAuraRange)+"]";
-   if(name.equals("AutoTotem"))name+=" ["+String.format("%.0f",OkeanClient.autoTotemHealth)+" HP]";
-   c.drawText(textRenderer,name,x+27,yy+6,0xFFFFFFFF,false);
-   panel(c,x+372,yy+4,29,12,OkeanClient.on(names[idx])?OkeanClient.accent():0xFF536378);
-  }
-  c.drawText(textRenderer,"LMB: toggle  |  RMB: setting  |  scroll: list",x+19,y+282,0xFF9EAEBD,false);
-  // Movable overlay previews can be dragged by their title bars on the HUD tab.
-  if(tab==0){
-   panel(c,Math.max(4,OkeanClient.watermarkX),Math.max(4,OkeanClient.watermarkY),104,15,0xD42B314F);
-   c.drawText(textRenderer,"Okean | drag",OkeanClient.watermarkX+8,OkeanClient.watermarkY+3,OkeanClient.accent(),false);
-   panel(c,OkeanClient.targetX,OkeanClient.targetY,110,19,0xDB24384B);
-   c.drawText(textRenderer,"Target HUD | drag",OkeanClient.targetX+6,OkeanClient.targetY+5,OkeanClient.accent(),false);
-  }
+  rounded(c,x0,y+260,maxWidth,37,0xD8122336);
+  c.drawText(textRenderer,"LMB: toggle   RMB: theme / setting   Wheel: scroll HUD",x0+14,y+273,0xFFB9C8D6,false);
   super.render(c,mx,my,d);
  }
- @Override public boolean mouseClicked(double mx,double my,int button){
-  int x=left(),y=top();
-  if(tab==0&&button==0){
-   if(mx>=OkeanClient.watermarkX&&mx<OkeanClient.watermarkX+104&&my>=OkeanClient.watermarkY&&my<OkeanClient.watermarkY+15){
-    drag=1;dx=(int)mx-OkeanClient.watermarkX;dy=(int)my-OkeanClient.watermarkY;return true;
-   }
-   if(mx>=OkeanClient.targetX&&mx<OkeanClient.targetX+110&&my>=OkeanClient.targetY&&my<OkeanClient.targetY+19){
-    drag=2;dx=(int)mx-OkeanClient.targetX;dy=(int)my-OkeanClient.targetY;return true;
-   }
-  }
-  if(mx>=x+16&&mx<x+420&&my>=y+57&&my<y+81&&button==0){
-   int t=(int)(mx-x-16)/136;if(t>=0&&t<3){tab=t;scroll=0;return true;}
-  }
-  if(mx>=x+16&&mx<x+412&&my>=y+92&&my<y+276){
-   int idx=(int)(my-y-92)/23+scroll;
-   String[] names=current();
-   if(idx>=0&&idx<names.length){
-    String name=names[idx];
-    if(button==0)OkeanClient.toggle(name);
-    else if(button==1){
-     if(name.equals("AutoTotem")){OkeanClient.autoTotemHealth+=2;if(OkeanClient.autoTotemHealth>20)OkeanClient.autoTotemHealth=8;}
-     else if(name.equals("KillAura")){OkeanClient.killAuraRange+=.25;if(OkeanClient.killAuraRange>3.25)OkeanClient.killAuraRange=2.5;}
-     else OkeanClient.hudTheme=(OkeanClient.hudTheme+1)%OkeanClient.HUD_COLORS.length;
+ @Override public boolean mouseClicked(double mx,double my,int b){
+  int w=Math.min(width-24,1020),x0=(width-w)/2,y0=Math.max(12,height/2-177),y=y0+57;
+  if(b==0&&mx>=x0+w-96&&mx<=x0+w-16&&my>=y0+10&&my<=y0+35){page=1-page;scroll=0;return true;}
+  if(page==0){
+   int gap=9,cardW=(w-4*gap)/5;
+   for(int i=0;i<5;i++){
+    int x=x0+i*(cardW+gap);
+    for(int j=1;j<groups[i].length;j++){
+     int yy=y+45+(j-1)*29;
+     if(mx>=x+7&&mx<=x+cardW-7&&my>=yy&&my<yy+25){change(groups[i][j],b);return true;}
     }
-    return true;
+   }
+  }else{
+   int colW=(w-10)/2;
+   for(int col=0;col<2;col++)for(int row=0;row<8;row++){
+    int index=scroll+col*8+row;
+    if(index>=hud.length)continue;
+    int xx=x0+col*(colW+10),yy=y+9+row*29;
+    if(mx>=xx+8&&mx<xx+colW-8&&my>=yy&&my<yy+25){change(hud[index],b);return true;}
    }
   }
-  if(button==1&&mx>=x+270&&mx<x+417&&my>=y+9&&my<y+49){
-   OkeanClient.hudTheme=(OkeanClient.hudTheme+1)%OkeanClient.HUD_COLORS.length;return true;
+  return super.mouseClicked(mx,my,b);
+ }
+ private void change(String name,int button){
+  if(button==0){OkeanClient.toggle(name);return;}
+  if(button==1){
+   if(name.equals("KillAura")){OkeanClient.killAuraRange+=0.25;if(OkeanClient.killAuraRange>3.25)OkeanClient.killAuraRange=2.5;}
+   else if(name.equals("AutoTotem")){OkeanClient.autoTotemHealth+=2;if(OkeanClient.autoTotemHealth>20)OkeanClient.autoTotemHealth=8;}
+   else OkeanClient.hudTheme=(OkeanClient.hudTheme+1)%OkeanClient.HUD_COLORS.length;
   }
-  return super.mouseClicked(mx,my,button);
  }
- @Override public boolean mouseDragged(double mx,double my,int b,double deltaX,double deltaY){
-  if(drag==1){OkeanClient.watermarkX=Math.max(0,Math.min(width-110,(int)mx-dx));OkeanClient.watermarkY=Math.max(0,Math.min(height-22,(int)my-dy));return true;}
-  if(drag==2){OkeanClient.targetX=Math.max(0,Math.min(width-180,(int)mx-dx));OkeanClient.targetY=Math.max(0,Math.min(height-52,(int)my-dy));return true;}
-  return super.mouseDragged(mx,my,b,deltaX,deltaY);
- }
- @Override public boolean mouseReleased(double mx,double my,int button){drag=0;return super.mouseReleased(mx,my,button);}
  @Override public boolean mouseScrolled(double mx,double my,double horizontal,double vertical){
-  scroll=Math.max(0,Math.min(Math.max(0,current().length-8),scroll-(int)Math.signum(vertical)));return true;
+  if(page==1){scroll=Math.max(0,Math.min(Math.max(0,hud.length-16),scroll-(int)Math.signum(vertical)));return true;}
+  return super.mouseScrolled(mx,my,horizontal,vertical);
  }
  @Override public void close(){client.setScreen(previous);}
  @Override public boolean shouldPause(){return false;}
