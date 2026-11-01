@@ -39,6 +39,8 @@ public class OkeanClient implements ClientModInitializer {
  public static int accent(){return HUD_COLORS[hudTheme%HUD_COLORS.length];}
  public static String themeName(){return HUD_THEME_NAMES[hudTheme%HUD_THEME_NAMES.length];}
  public static int hudColor=0;
+ public static int watermarkX=8,watermarkY=7;
+ public static int targetX=12,targetY=120;
  public static boolean compactHud=false;
  public static final int[] HUD_COLORS={0xFF42CCFF,0xFFBA85FF,0xFF71E7A1,0xFFFFC069,0xFFFF728B};
  private static LivingEntity closestTarget(MinecraftClient client){
@@ -57,7 +59,7 @@ public class OkeanClient implements ClientModInitializer {
   MODULES.computeIfPresent(name,(k,v)->!v);
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
   MODULES.put("Item HUD",true);
@@ -118,7 +120,7 @@ public class OkeanClient implements ClientModInitializer {
  private static void renderHud(DrawContext ctx){
   MinecraftClient mc=MinecraftClient.getInstance();
   if(mc.player==null||mc.world==null||mc.options.hudHidden)return;
-  int y=on("Watermark")?30:8;
+  int y=on("Watermark")?Math.max(30,watermarkY+29):8;
   if(on("Watermark")){
    int ping=0;
    if(mc.getNetworkHandler()!=null){
@@ -127,10 +129,25 @@ public class OkeanClient implements ClientModInitializer {
    }
    String label="Okean Client  /  "+ping+" ms  /  "+mc.getCurrentFps()+" FPS";
    int w=mc.textRenderer.getWidth(label)+42;
-   ctx.fill(7,5,w,25,0xE20B1220);
-   ctx.fill(7,5,10,25,on("Watermark Accent")?accent():0xFF6B50E9);
-   ctx.drawText(mc.textRenderer,Text.literal("O"),16,11,0xFFB39CFF,true);
-   ctx.drawText(mc.textRenderer,Text.literal(label),31,11,0xFFFFFFFF,true);
+   rounded(ctx,watermarkX,watermarkY,watermarkX+w,watermarkY+20,0xE20B1220);
+   ctx.fill(watermarkX,watermarkY+3,watermarkX+3,watermarkY+17,accent());
+   ctx.drawText(mc.textRenderer,Text.literal("O"),watermarkX+10,watermarkY+6,0xFFB39CFF,true);
+   ctx.drawText(mc.textRenderer,Text.literal(label),watermarkX+25,watermarkY+6,0xFFFFFFFF,true);
+  }
+  if(on("Center Dot")){
+   int cx=ctx.getScaledWindowWidth()/2,cy=ctx.getScaledWindowHeight()/2;
+   ctx.fill(cx-1,cy-1,cx+2,cy+2,accent());
+  }
+  if(on("Health Bar")){
+   int max=Math.max(1,(int)mc.player.getMaxHealth()),current=Math.max(0,(int)mc.player.getHealth());
+   int x=ctx.getScaledWindowWidth()/2-55,bottom=ctx.getScaledWindowHeight()-62;
+   rounded(ctx,x,bottom,x+110,bottom+8,0xB9000C19);
+   ctx.fill(x+2,bottom+2,x+2+(106*Math.min(current,max)/max),bottom+6,accent());
+  }
+  if(on("Coordinates Box")){
+   int x=ctx.getScaledWindowWidth()-136;
+   rounded(ctx,x,8,x+128,36,0xDA101C2B);
+   ctx.drawText(mc.textRenderer,"XYZ "+mc.player.getBlockX()+", "+mc.player.getBlockY()+", "+mc.player.getBlockZ(),x+6,18,accent(),true);
   }
   if(on("Session HUD"))y=line(ctx,"Session ticks: "+ticks,y);
   if(on("Crosshair Info"))y=line(ctx,"Look: "+mc.player.getHorizontalFacing().asString(),y);
@@ -163,12 +180,24 @@ public class OkeanClient implements ClientModInitializer {
   }
   if(on("Target HUD")){
    LivingEntity target=closestTarget(mc);
-   if(target!=null)y=line(ctx,"Target: "+target.getName().getString()+" | HP "+String.format("%.1f",target.getHealth()),y);
+   if(target!=null){
+    int x=targetX,t=targetY,ww=174;
+    rounded(ctx,x,t,x+ww,t+48,0xE3162234);
+    ctx.fill(x+3,t+3,x+39,t+39,0xFF35465A);
+    ctx.drawText(mc.textRenderer,target.getName().getString().substring(0,Math.min(18,target.getName().getString().length())),x+45,t+8,0xFFFFFFFF,true);
+    ctx.drawText(mc.textRenderer,String.format("%.1f HP",target.getHealth()),x+45,t+23,accent(),false);
+    float health=Math.max(0,Math.min(1,target.getHealth()/Math.max(1,target.getMaxHealth())));
+    ctx.fill(x+45,t+37,x+166,t+42,0xFF334055);
+    ctx.fill(x+45,t+37,x+45+(int)(121*health),t+42,accent());
+   }
   }
   if(on("Ping HUD")&&mc.getNetworkHandler()!=null){
    var entry=mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
    if(entry!=null)y=line(ctx,"Ping: "+entry.getLatency()+" ms",y);
   }
+ }
+ private static void rounded(DrawContext c,int x,int y,int r,int b,int color){
+  c.fill(x+3,y,r-3,b,color);c.fill(x,y+3,r,b-3,color);
  }
  private static int count(MinecraftClient mc, Item item){
   int n=0;
@@ -179,7 +208,7 @@ public class OkeanClient implements ClientModInitializer {
  private static int line(DrawContext ctx,String str,int y){
   MinecraftClient mc=MinecraftClient.getInstance();
   if(!on("Clean HUD"))ctx.fill(6,y-3,12+mc.textRenderer.getWidth(str),y+12,0xA30A1722);
-  ctx.drawText(mc.textRenderer,Text.literal(str),9,y,HUD_COLORS[hudColor],true);
+  ctx.drawText(mc.textRenderer,Text.literal(str),9,y,accent(),true);
   return y+17;
  }
 }
