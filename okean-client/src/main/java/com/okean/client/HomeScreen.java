@@ -59,7 +59,9 @@ public class HomeScreen extends Screen {
     if(my>=y&&my<y+27){
      switch(i){
       case 0->client.setScreen(new HomeScreen());
-      case 1,2,3->client.setScreen(new ModuleScreen(this));
+      case 1->client.setScreen(new ModuleScreen(this,0));
+      case 2->client.setScreen(new ModuleScreen(this,1));
+      case 3->client.setScreen(new ConfigScreen(this));
       case 4->client.setScreen(new OptionsScreen(this,client.options));
       case 5->client.scheduleStop();
      }
