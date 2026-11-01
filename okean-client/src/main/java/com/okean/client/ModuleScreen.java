@@ -9,12 +9,13 @@ public class ModuleScreen extends Screen {
  private final String[][] groups={
   {"COMBAT","KillAura","AutoClicker","Target HUD"},
   {"MOVEMENT","AutoSprint","Jump Assist","GUI Move"},
-  {"VISUALS","Fullbright","ItemESP","NameTags","Item Radar","Mob Radar","Player Radar","Center Dot"},
+  {"VISUALS","Fullbright","ItemESP","MobESP","NameTags","Mob Radar","Player Radar","Center Dot"},
   {"PLAYER","AutoTotem","AutoRespawn","Armor HUD","Health HUD"},
   {"MISC","Watermark","Clock","Module List"}
  };
  private final String[] hud={"Watermark","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Speed HUD","Ping HUD","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Durability HUD","Target HUD","Clean HUD"};
- public ModuleScreen(Screen prior){super(Text.literal("Okean Client"));previous=prior;}
+ public ModuleScreen(Screen prior){this(prior,0);}
+ public ModuleScreen(Screen prior,int initialPage){super(Text.literal("Okean Client"));previous=prior;page=initialPage;}
  private void rounded(DrawContext c,int x,int y,int w,int h,int color){
   c.fill(x+5,y,x+w-5,y+h,color);c.fill(x,y+5,x+w,y+h-5,color);
   c.fill(x+2,y+2,x+w-2,y+h-2,color);
