@@ -92,7 +92,7 @@ public class OkeanClient implements ClientModInitializer {
   saveConfig();
  }
  @Override public void onInitializeClient(){
-  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box","Item Radar","Mob Radar","Player Radar","AutoClicker","AutoRespawn","NameTags","ItemESP"}) MODULES.put(name,false);
+  for(String name:new String[]{"AutoSprint","FPS HUD","XYZ HUD","Direction","Clock","Biome","Health HUD","Clean HUD","Speed HUD","Ping HUD","Fullbright","Watermark","KillAura","Target HUD","Durability HUD","Jump Assist","Item HUD","Armor HUD","Session HUD","CPS HUD","Crosshair Info","Hotbar HUD","Module List","Watermark Accent","GUI Move","AutoTotem","Center Dot","Health Bar","Coordinates Box","Mob Radar","Player Radar","AutoClicker","AutoRespawn","NameTags","ItemESP","MobESP"}) MODULES.put(name,false);
   MODULES.put("FPS HUD",true);
   MODULES.put("Watermark",true);
   MODULES.put("Item HUD",true);
@@ -100,6 +100,18 @@ public class OkeanClient implements ClientModInitializer {
   menuKey=KeyBindingHelper.registerKeyBinding(new KeyBinding("Okean Client Menu",InputUtil.Type.KEYSYM,GLFW.GLFW_KEY_RIGHT_SHIFT,"Okean Client"));
   ClientTickEvents.END_CLIENT_TICK.register(client->{
    ticks++;
+   if(client.world!=null&&client.player!=null&&ticks%5==0){
+    for(Entity entity:client.world.getEntities()){
+     if(entity==client.player||client.player.squaredDistanceTo(entity)>256)continue;
+     if(entity instanceof ItemEntity){
+      entity.setGlowing(on("ItemESP"));
+     } else if(entity instanceof LivingEntity && !(entity instanceof PlayerEntity)){
+      entity.setGlowing(on("MobESP"));
+     } else if(entity instanceof PlayerEntity){
+      entity.setGlowing(on("NameTags"));
+     }
+    }
+   }
    while(menuKey.wasPressed()){
     if(client.currentScreen instanceof ModuleScreen)client.setScreen(null);
     else client.setScreen(new ModuleScreen(client.currentScreen));
@@ -195,7 +207,7 @@ public class OkeanClient implements ClientModInitializer {
    rounded(ctx,x,8,x+128,36,0xDA101C2B);
    ctx.drawText(mc.textRenderer,"XYZ "+mc.player.getBlockX()+", "+mc.player.getBlockY()+", "+mc.player.getBlockZ(),x+6,18,accent(),true);
   }
-  if(on("Item Radar")||on("Mob Radar")||on("Player Radar")||on("NameTags")||on("ItemESP")){
+  if(on("Mob Radar")||on("Player Radar")){
    int items=0,mobs=0,players=0;
    int drawnItems=0,drawnMobs=0;
    String nearestItem="";
@@ -210,11 +222,8 @@ public class OkeanClient implements ClientModInitializer {
     }else if(e instanceof PlayerEntity){players++;}
     else if(e instanceof LivingEntity){mobs++;}
    }
-   if(on("Item Radar"))y=line(ctx,"Nearby items: "+items+(nearestItem.isBlank()?"":" | "+nearestItem),y);
    if(on("Mob Radar"))y=line(ctx,"Nearby mobs: "+mobs,y);
    if(on("Player Radar"))y=line(ctx,"Nearby players: "+players,y);
-   if(on("ItemESP"))y=line(ctx,"ItemESP nearby: "+items+" | "+(nearestItem.isBlank()?"none":nearestItem),y);
-   if(on("NameTags"))y=line(ctx,"NameTags nearby: "+players+" players / "+mobs+" mobs",y);
   }
   if(on("Session HUD"))y=line(ctx,"Session ticks: "+ticks,y);
   if(on("Crosshair Info"))y=line(ctx,"Look: "+mc.player.getHorizontalFacing().asString(),y);
