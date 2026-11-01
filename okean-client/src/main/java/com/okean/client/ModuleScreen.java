@@ -23,7 +23,7 @@ public class ModuleScreen extends Screen {
  @Override public void renderBackground(DrawContext c,int mx,int my,float d){}
  @Override public void render(DrawContext c,int mx,int my,float d){
   c.fill(0,0,width,height,0x85060D18);
-  int maxWidth=Math.min(width-24,1020),x0=(width-maxWidth)/2;
+  int maxWidth=Math.min(width-24,760),x0=(width-maxWidth)/2;
   int headerY=Math.max(12,height/2-177);
   rounded(c,x0,headerY,maxWidth,47,0xEA0B1827);
   c.drawText(textRenderer,"O K E A N  C L I E N T",x0+16,headerY+11,0xFFFFFFFF,true);
@@ -33,7 +33,7 @@ public class ModuleScreen extends Screen {
   c.drawCenteredTextWithShadow(textRenderer,page==1?"MODULES":"HUD",hudButtonX+40,headerY+18,0xFFFFFFFF);
   int y=headerY+57;
   if(page==0){
-   int gap=9,cardW=(maxWidth-4*gap)/5;
+   int gap=7,cardW=(maxWidth-4*gap)/5;
    for(int i=0;i<5;i++){
     int x=x0+i*(cardW+gap);
     rounded(c,x,y,cardW,250,0xE41B2535);
@@ -65,15 +65,16 @@ public class ModuleScreen extends Screen {
    }
   }
   rounded(c,x0,y+260,maxWidth,37,0xD8122336);
-  c.drawText(textRenderer,"HUD SIZE: "+OkeanClient.hudScale+"%   [-] [+]",x0+maxWidth-183,y+273,OkeanClient.accent(),true);
-  c.drawText(textRenderer,"LMB: toggle   RMB: theme / setting   Wheel: scroll HUD",x0+14,y+273,0xFFB9C8D6,false);
+  c.drawText(textRenderer,page==1?"DRAG HUD": "HUD SIZE: "+OkeanClient.hudScale+"%   [-] [+]",x0+maxWidth-183,y+273,OkeanClient.accent(),true);
+  c.drawText(textRenderer,"LMB toggle   RMB setting   Wheel scroll",x0+14,y+273,0xFFB9C8D6,false);
   super.render(c,mx,my,d);
  }
  @Override public boolean mouseClicked(double mx,double my,int b){
-  int w=Math.min(width-24,1020),x0=(width-w)/2,y0=Math.max(12,height/2-177),y=y0+57;
+  int w=Math.min(width-24,760),x0=(width-w)/2,y0=Math.max(12,height/2-177),y=y0+57;
   if(b==0&&mx>=x0+w-96&&mx<=x0+w-16&&my>=y0+10&&my<=y0+35){page=1-page;scroll=0;return true;}
+  if(page==1&&b==0&&mx>x0+w-192&&my>=y+260&&my<y+297){client.setScreen(new HudEditorScreen(this));return true;}
   if(page==0){
-   int gap=9,cardW=(w-4*gap)/5;
+   int gap=7,cardW=(w-4*gap)/5;
    for(int i=0;i<5;i++){
     int x=x0+i*(cardW+gap);
     for(int j=1;j<groups[i].length;j++){
