@@ -72,9 +72,11 @@ public class OkeanClient implements ClientModInitializer {
    if(client.player!=null&&on("AutoSprint")&&client.options.forwardKey.isPressed()&&!client.player.isSneaking())client.player.setSprinting(true);
    if(on("GUI Move")&&client.currentScreen!=null&&!(client.currentScreen instanceof ChatScreen)&&client.player!=null){
     long handle=client.getWindow().getHandle();
-    var keys=new net.minecraft.client.option.KeyBinding[]{client.options.forwardKey,client.options.backKey,client.options.leftKey,client.options.rightKey,client.options.jumpKey};
-    for(var key:keys)if(key.getBoundKey().getCategory()==InputUtil.Type.KEYSYM)
-     key.setPressed(InputUtil.isKeyPressed(handle,key.getBoundKey().getCode()));
+    client.options.forwardKey.setPressed(InputUtil.isKeyPressed(handle,GLFW.GLFW_KEY_W));
+    client.options.backKey.setPressed(InputUtil.isKeyPressed(handle,GLFW.GLFW_KEY_S));
+    client.options.leftKey.setPressed(InputUtil.isKeyPressed(handle,GLFW.GLFW_KEY_A));
+    client.options.rightKey.setPressed(InputUtil.isKeyPressed(handle,GLFW.GLFW_KEY_D));
+    client.options.jumpKey.setPressed(InputUtil.isKeyPressed(handle,GLFW.GLFW_KEY_SPACE));
    }
    if(on("AutoTotem")&&client.player!=null&&client.currentScreen==null&&client.interactionManager!=null
        &&client.player.getHealth()<=autoTotemHealth&&!client.player.getOffHandStack().isOf(Items.TOTEM_OF_UNDYING)){
