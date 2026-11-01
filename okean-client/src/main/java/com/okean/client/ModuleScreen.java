@@ -4,7 +4,7 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 public class ModuleScreen extends Screen {
  private final Screen previous;
- private final String[][] groups={{"COMBAT","Health HUD"},{"MOVEMENT","AutoSprint","Direction"},{"VISUALS","FPS HUD","XYZ HUD","Biome","Day Mode","Night Mode","Fullbright"},{"PLAYER","Clock","Speed HUD","Ping HUD"},{"MISC","Clean HUD"}};
+ private final String[][] groups={{"COMBAT","Health HUD"},{"MOVEMENT","AutoSprint","Direction"},{"VISUALS","FPS HUD","XYZ HUD","Biome","Fullbright"},{"PLAYER","Clock","Speed HUD","Ping HUD"},{"MISC","Clean HUD"}};
  public ModuleScreen(Screen previous){super(Text.literal("Okean Modules"));this.previous=previous;}
  @Override public void renderBackground(DrawContext ctx,int mx,int my,float delta){}
  private int cardX(int i){return 12+i*Math.max(105,(width-24)/5);}
