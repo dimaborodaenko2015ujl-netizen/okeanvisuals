@@ -36,7 +36,7 @@ public class OkeanClient implements ClientModInitializer {
   MinecraftClient mc=MinecraftClient.getInstance();
   if(mc.player==null||mc.world==null||mc.options.hudHidden)return;
   int y=8;
-  if(on("FPS HUD"))y=line(ctx,"Okean | FPS "+MinecraftClient.getCurrentFps(),y);
+  if(on("FPS HUD"))y=line(ctx,"Okean | FPS "+mc.getCurrentFps(),y);
   if(on("XYZ HUD"))y=line(ctx,String.format("XYZ: %.0f / %.0f / %.0f",mc.player.getX(),mc.player.getY(),mc.player.getZ()),y);
   if(on("Direction"))y=line(ctx,"Facing: "+mc.player.getHorizontalFacing().asString(),y);
   if(on("Clock"))y=line(ctx,"Time: "+java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm")),y);
