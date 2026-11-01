@@ -9,7 +9,7 @@ public class ModuleScreen extends Screen {
  private final String[][] groups={
   {"COMBAT","KillAura","Target HUD"},
   {"MOVEMENT","AutoSprint","Jump Assist","GUI Move"},
-  {"VISUALS","Fullbright","Center Dot","Health Bar","Coordinates Box"},
+  {"VISUALS","Fullbright","Item Radar","Mob Radar","Player Radar","Center Dot","Health Bar","Coordinates Box"},
   {"PLAYER","AutoTotem","Armor HUD","Health HUD"},
   {"MISC","Watermark","Clock","Module List"}
  };
